@@ -4827,7 +4827,6 @@ window.onload = () => {
 };
 </script>
 
-
 <script>
 function startVoiceAssistant() {
   const recognition = new webkitSpeechRecognition();
@@ -4840,62 +4839,53 @@ function startVoiceAssistant() {
 }
 </script>
 
-
+<!-- ✅ Supabase Auth Configuration -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   const supabase = supabase.createClient(
-    'https://https://wizyuwbezyltaxatkupc.supabase.co',
+    'https://wizyuwbezyltaxatkupc.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA'
   );
 
-  // Store session automatically using Supabase's auth
+  // Check if user already logged in
   supabase.auth.getSession().then(({ data: { session } }) => {
     if (session) {
-      console.log('Session found:', session);
+      console.log('✅ Session found:', session);
     } else {
-      console.log('No session found. User not logged in.');
+      console.log('❌ No session found.');
     }
   });
 
-  // Example login handler (replace with your own logic)
+  // Login handler
   async function handleLogin(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       alert('Login failed: ' + error.message);
     } else {
       alert('Login successful');
+      console.log(data);
+      // Optional: window.location.href = "/dashboard.html";
     }
   }
-</script>
-<script>
+
+  // Connect to your form
   document.addEventListener("DOMContentLoaded", () => {
     const loginForm = document.getElementById("loginForm");
-    const emailInput = document.getElementById("username");  // using 'username' as email
+    const emailInput = document.getElementById("username");  // using as email
     const passwordInput = document.getElementById("password");
 
     if (loginForm && emailInput && passwordInput) {
       loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const email = emailInput.value.trim();
+        const username = emailInput.value.trim();
+        const email = username.includes("@") ? username : `${username}@example.com`; // support plain usernames
         const password = passwordInput.value.trim();
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (error) {
-          alert("❌ Login failed: " + error.message);
-        } else {
-          alert("✅ Login successful!");
-          console.log(data);
-          // Optionally redirect:
-          // window.location.href = "/dashboard.html";
-        }
+        handleLogin(email, password);
       });
     }
   });
 </script>
-
 </body>
 </html>
