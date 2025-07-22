@@ -1096,6 +1096,7 @@
             }
         }
     </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Login UI -->
@@ -2588,47 +2589,47 @@
 
             // --- Utility Functions for localStorage ---
             function loadDataFromLocalStorage() {
-                users = JSON.parse(localStorage.getItem('schoolPulseUsers')) || [
+                users = JSON.parse(null) || [
                     { id: 'U001', name: 'Admin', email: 'admin@tps.com', role: 'Admin', status: 'Active', password: 'Aatif@123' },
                     { id: 'U002', name: 'Teacher', email: 'jane.doe@school.com', role: 'Teacher', status: 'Active', password: 'Aatif@123' },
                     { id: 'U003', name: 'Student', email: 'john.smith@school.com', role: 'Student', status: 'Active', password: 'Aatif@123' }
                 ];
-                students = JSON.parse(localStorage.getItem('schoolPulseStudents')) || [
+                students = JSON.parse(null) || [
                     { id: 'S1001', name: 'Emily Johnson', fatherName: 'David Johnson', motherName: 'Sarah Johnson', class: 'Grade 10', rollNo: '001', aadharNo: '1234 5678 9012', email: 'emily.j@example.com', phone: '555-111-2222', status: 'Active', fingerprintCredential: null },
                     { id: 'S1002', name: 'Michael Brown', fatherName: 'James Brown', motherName: 'Linda Brown', class: 'Grade 9', rollNo: '002', aadharNo: '9876 5432 1098', email: 'michael.b@example.com', phone: '555-333-4444', status: 'Active', fingerprintCredential: null },
                     { id: 'S1003', name: 'Jessica Davis', fatherName: 'Robert Davis', motherName: 'Patricia Davis', class: 'Grade 10', rollNo: '003', aadharNo: '1122 3344 5566', email: 'jessica.d@example.com', phone: '555-555-6666', status: 'Active', fingerprintCredential: null },
                     { id: 'S1004', name: 'Daniel Wilson', fatherName: 'Charles Wilson', motherName: 'Mary Wilson', class: 'Grade 9', rollNo: '004', aadharNo: '7788 9900 1122', email: 'daniel.w@example.com', phone: '555-777-8888', status: 'Active', fingerprintCredential: null },
                     { id: 'S1005', name: 'Sophia Miller', fatherName: 'Thomas Miller', motherName: 'Nancy Miller', class: 'Grade 10', rollNo: '005', aadharNo: '3344 5566 7788', email: 'sophia.m@example.com', phone: '555-999-0000', status: 'Active', fingerprintCredential: null }
                 ];
-                teachers = JSON.parse(localStorage.getItem('schoolPulseTeachers')) || [
+                teachers = JSON.parse(null) || [
                     { id: 'T2001', name: 'John Smith', subject: 'Mathematics', classes: 'Grade 9-10', email: 'john.s@example.com', phone: '555-777-8888', fingerprintCredential: null }
                 ];
-                payrollEntries = JSON.parse(localStorage.getItem('schoolPulsePayroll')) || [
+                payrollEntries = JSON.parse(null) || [
                     { id: 'P001', period: 'March 2023', staffCount: 68, totalAmount: '85,240.00', status: 'Paid' }
                 ];
-                invoices = JSON.parse(localStorage.getItem('schoolPulseInvoices')) || [
+                invoices = JSON.parse(null) || [
                     { id: 'I001', invoiceNumber: 'INV-2023-0042', date: 'Mar 15, 2023', amount: '1,250.00', status: 'Paid' }
                 ];
-                announcements = JSON.parse(localStorage.getItem('schoolPulseAnnouncements')) || [
+                announcements = JSON.parse(null) || [
                     { id: 'A001', title: 'School Holiday', content: 'School will be closed on Nov 1st for holiday.', datePosted: '2023-10-20', status: 'Active' },
                     { id: 'A002', title: 'Parent-Teacher Meeting Reminder', content: 'Reminder: PTM on Oct 28th. Please check schedule.', datePosted: '2023-10-15', status: 'Archived' }
                 ];
-                notifications = JSON.parse(localStorage.getItem('schoolPulseNotifications')) || [
+                notifications = JSON.parse(null) || [
                     { id: 1, title: "New student enrolled!", description: "Emily Johnson joined Grade 10.", time: "5 minutes ago", unread: true },
                     { id: 2, title: "Payroll processed", description: "March payroll completed for all staff.", time: "1 hour ago", unread: true },
                     { id: 3, title: "Event Reminder", description: "Parent-Teacher meeting tomorrow at 3 PM.", time: "Yesterday", unread: true },
                     { id: 4, title: "System Update", description: "System maintenance scheduled for Sunday.", time: "2 days ago", unread: false },
                 ];
-                auditLogs = JSON.parse(localStorage.getItem('schoolPulseAuditLogs')) || [
+                auditLogs = JSON.parse(null) || [
                     { id: 'L001', timestamp: '2023-10-26 10:30:00', user: 'Admin User', action: 'Logged In', module: 'Authentication', details: 'Successful login from IP: 192.168.1.100' },
                     { id: 'L002', timestamp: '2023-10-26 10:35:15', user: 'Admin User', action: 'Added Student', module: 'Students', details: 'Added new student: Emily Johnson (ID: S1001)' },
                     { id: 'L003', timestamp: '2023-10-26 11:00:40', user: 'Jane Doe', action: 'Updated Grade', module: 'Students', details: 'Updated Math grade for John Smith to A-' }
                 ];
-                backups = JSON.parse(localStorage.getItem('schoolPulseBackups')) || [
+                backups = JSON.parse(null) || [
                     { id: 'B001', backupId: 'BK20231026-001', date: '2023-10-26 02:00:00', size: '150 MB', type: 'Full' },
                     { id: 'B002', backupId: 'BK20231025-001', date: '2023-10-25 02:00:00', size: '148 MB', type: 'Full' }
                 ];
-                attendanceRecords = JSON.parse(localStorage.getItem('schoolPulseAttendance')) || [
+                attendanceRecords = JSON.parse(null) || [
                     { id: 'ATT001', studentId: 'S1001', date: '2023-10-26', status: 'Present', remarks: '' },
                     { id: 'ATT002', studentId: 'S1002', date: '2023-10-26', status: 'Absent', remarks: 'Sick' },
                     { id: 'ATT003', studentId: 'S1003', date: '2023-10-26', status: 'Present', remarks: '' },
@@ -2636,24 +2637,24 @@
                     { id: 'ATT005', studentId: 'S1002', date: '2023-10-25', status: 'Present', remarks: '' },
                     { id: 'ATT006', studentId: 'S1003', date: '2023-10-25', status: 'Leave', remarks: 'Family event' },
                 ];
-                teacherAttendanceRecords = JSON.parse(localStorage.getItem('schoolPulseTeacherAttendance')) || [
+                teacherAttendanceRecords = JSON.parse(null) || [
                     { id: 'TATT001', teacherId: 'T2001', date: '2023-10-26', status: 'Present', remarks: '' },
                     { id: 'TATT002', teacherId: 'T2001', date: '2023-10-25', status: 'Present', remarks: '' },
                 ];
             }
 
             function saveDataToLocalStorage() {
-                localStorage.setItem('schoolPulseUsers', JSON.stringify(users));
-                localStorage.setItem('schoolPulseStudents', JSON.stringify(students));
-                localStorage.setItem('schoolPulseTeachers', JSON.stringify(teachers));
-                localStorage.setItem('schoolPulsePayroll', JSON.stringify(payrollEntries));
-                localStorage.setItem('schoolPulseInvoices', JSON.stringify(invoices));
-                localStorage.setItem('schoolPulseAnnouncements', JSON.stringify(announcements));
-                localStorage.setItem('schoolPulseNotifications', JSON.stringify(notifications));
-                localStorage.setItem('schoolPulseAuditLogs', JSON.stringify(auditLogs));
-                localStorage.setItem('schoolPulseBackups', JSON.stringify(backups));
-                localStorage.setItem('schoolPulseAttendance', JSON.stringify(attendanceRecords)); // New: Save attendance
-                localStorage.setItem('schoolPulseTeacherAttendance', JSON.stringify(teacherAttendanceRecords)); // New: Save teacher attendance
+                );
+                );
+                );
+                );
+                );
+                );
+                );
+                );
+                );
+                ); // New: Save attendance
+                ); // New: Save teacher attendance
                 updateDashboardStats(); // Update stats after data changes
             }
 
@@ -2858,7 +2859,7 @@
             }
 
             // Check login status on load
-            if (localStorage.getItem('isLoggedIn') === 'true') {
+            if (null === 'true') {
                 showSchoolSiteUi();
             } else {
                 showLoginUi();
@@ -2884,8 +2885,8 @@
 
                 if (user) {
                     alert('Login successful!');
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('loggedInUser', JSON.stringify(user)); // Store logged in user info
+                    
+                    ); // Store logged in user info
                     showSchoolSiteUi();
                     addAuditLog(user.name, 'Logged In', 'Authentication', `Successful login for role: ${role}`);
                 } else {
@@ -2930,7 +2931,7 @@
             if (logoutButton) {
                 logoutButton.addEventListener('click', function() {
                     if (confirm('Are you sure you want to logout?')) {
-                        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+                        const loggedInUser = JSON.parse(null);
                         addAuditLog(loggedInUser ? loggedInUser.name : 'Unknown', 'Logged Out', 'Authentication', 'User logged out');
                         localStorage.clear(); // Clear all local storage
                         showLoginUi(); // Show login UI
@@ -3033,7 +3034,7 @@
                     }
                 });
                 // Only render if the school site UI is active
-                if (localStorage.getItem('isLoggedIn') === 'true') {
+                if (null === 'true') {
                     calendar.render();
                 }
             }
@@ -3176,7 +3177,7 @@
                     notif.unread = false;
                     renderDropdownNotifications();
                     renderModalNotifications();
-                    addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'System', 'Notification Read', 'Notifications', `Notification "${notif.title}" marked as read.`);
+                    addAuditLog(JSON.parse(null)?.name || 'System', 'Notification Read', 'Notifications', `Notification "${notif.title}" marked as read.`);
                 }
             }
 
@@ -3184,7 +3185,7 @@
                 notifications.forEach((n) => (n.unread = false));
                 renderDropdownNotifications();
                 renderModalNotifications();
-                addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'System', 'Notifications', 'Notifications', 'All notifications marked as read.');
+                addAuditLog(JSON.parse(null)?.name || 'System', 'Notifications', 'Notifications', 'All notifications marked as read.');
             }
 
             if (notificationButton) {
@@ -3326,7 +3327,7 @@
                     renderPayrollTable();
 
                     alert('Payroll processing initiated successfully!');
-                    addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Processed Payroll', 'Payroll', `Processed payroll for ${formattedPeriod}, amount: $${totalAmount}`);
+                    addAuditLog(JSON.parse(null)?.name || 'Admin', 'Processed Payroll', 'Payroll', `Processed payroll for ${formattedPeriod}, amount: $${totalAmount}`);
                     if (payrollModal) payrollModal.classList.add('hidden');
                     payrollForm.reset();
                 });
@@ -3421,7 +3422,7 @@
                     renderFinanceTable();
 
                     alert('Invoice added successfully!');
-                    addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Added Invoice', 'Finance', `Added invoice ${invoiceNumber} for $${invoiceAmount}`);
+                    addAuditLog(JSON.parse(null)?.name || 'Admin', 'Added Invoice', 'Finance', `Added invoice ${invoiceNumber} for $${invoiceAmount}`);
                     if (addInvoiceModal) addInvoiceModal.classList.add('hidden');
                     addInvoiceForm.reset();
                 });
@@ -3429,7 +3430,7 @@
 
             // Profile Module Specific JavaScript
             function updateProfileForm() {
-                const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+                const loggedInUser = JSON.parse(null);
                 if (loggedInUser) {
                     profileFullName.value = loggedInUser.name || '';
                     profileEmail.value = loggedInUser.email || '';
@@ -3441,7 +3442,7 @@
             }
 
             function updateLoggedInUserName() {
-                const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+                const loggedInUser = JSON.parse(null);
                 if (loggedInUser && loggedInUserName) {
                     loggedInUserName.textContent = loggedInUser.name;
                 }
@@ -3450,13 +3451,13 @@
             if (profileForm) {
                 profileForm.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+                    const loggedInUser = JSON.parse(null);
                     if (loggedInUser) {
                         loggedInUser.name = profileFullName.value;
                         loggedInUser.email = profileEmail.value;
                         loggedInUser.role = profileRole.value;
                         // In a real app, you'd save phone and address too
-                        localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+                        );
                         saveDataToLocalStorage(); // To trigger dashboard stats update if needed
                         updateLoggedInUserName();
                         alert('Profile changes saved successfully!');
@@ -3905,7 +3906,7 @@
                         const teacher = teachers.find(s => s.id === deletedRecord.teacherId);
                         saveDataToLocalStorage();
                         renderTeacherAttendanceTable();
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Deleted Teacher Attendance', 'Teacher Attendance', `Deleted attendance for ${teacher ? teacher.name : 'Unknown Teacher'} on ${deletedRecord.date}`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Deleted Teacher Attendance', 'Teacher Attendance', `Deleted attendance for ${teacher ? teacher.name : 'Unknown Teacher'} on ${deletedRecord.date}`);
                         alert('Teacher attendance record deleted successfully!');
                     }
                 }
@@ -4107,7 +4108,7 @@
                         const deletedStudent = students.splice(studentIndex, 1)[0];
                         saveDataToLocalStorage();
                         renderStudentTable();
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Deleted Student', 'Students', `Deleted student: ${deletedStudent.name} (ID: ${deletedStudent.id})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Deleted Student', 'Students', `Deleted student: ${deletedStudent.name} (ID: ${deletedStudent.id})`);
                         alert('Student deleted successfully!');
                     }
                 }
@@ -4140,7 +4141,7 @@
                         const deletedTeacher = teachers.splice(teacherIndex, 1)[0];
                         saveDataToLocalStorage();
                         renderTeacherTable();
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Deleted Teacher', 'Teachers', `Deleted teacher: ${deletedTeacher.name} (ID: ${deletedTeacher.id})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Deleted Teacher', 'Teachers', `Deleted teacher: ${deletedTeacher.name} (ID: ${deletedTeacher.id})`);
                         alert('Teacher deleted successfully!');
                     }
                 }
@@ -4176,7 +4177,7 @@
                         const deletedUser = users.splice(userIndex, 1)[0];
                         saveDataToLocalStorage();
                         renderUserTable();
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Deleted User', 'User Management', `Deleted user: ${deletedUser.name} (ID: ${deletedUser.id})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Deleted User', 'User Management', `Deleted user: ${deletedUser.name} (ID: ${deletedUser.id})`);
                         alert('User deleted successfully!');
                     }
                 }
@@ -4208,7 +4209,7 @@
                         const deletedAnnouncement = announcements.splice(announcementIndex, 1)[0];
                         saveDataToLocalStorage();
                         renderAnnouncementTable();
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Deleted Announcement', 'Announcements', `Deleted: "${deletedAnnouncement.title}" (ID: ${deletedAnnouncement.id})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Deleted Announcement', 'Announcements', `Deleted: "${deletedAnnouncement.title}" (ID: ${deletedAnnouncement.id})`);
                         alert('Announcement deleted successfully!');
                     }
                 }
@@ -4247,7 +4248,7 @@
                         const student = students.find(s => s.id === deletedRecord.studentId);
                         saveDataToLocalStorage();
                         renderAttendanceTable();
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Deleted Attendance', 'Attendance', `Deleted attendance for ${student ? student.name : 'Unknown Student'} on ${deletedRecord.date}`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Deleted Attendance', 'Attendance', `Deleted attendance for ${student ? student.name : 'Unknown Student'} on ${deletedRecord.date}`);
                         alert('Attendance record deleted successfully!');
                     }
                 }
@@ -4306,7 +4307,7 @@
                         if (studentIndex > -1) {
                             students[studentIndex] = { ...students[studentIndex], name: fullName, fatherName, motherName, class: studentClass, rollNo, aadharNo, email, phone, status };
                             alert('Student updated successfully!');
-                            addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Updated Student', 'Students', `Updated student: ${fullName} (ID: ${id})`);
+                            addAuditLog(JSON.parse(null)?.name || 'Admin', 'Updated Student', 'Students', `Updated student: ${fullName} (ID: ${id})`);
                         }
                     } else {
                         // Add new student
@@ -4325,7 +4326,7 @@
                         };
                         students.push(newStudent);
                         alert('Student added successfully!');
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Added Student', 'Students', `Added new student: ${fullName} (ID: ${newStudent.id})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Added Student', 'Students', `Added new student: ${fullName} (ID: ${newStudent.id})`);
                     }
                     
                     saveDataToLocalStorage();
@@ -4352,7 +4353,7 @@
                         if (teacherIndex > -1) {
                             teachers[teacherIndex] = { ...teachers[teacherIndex], name: fullName, subject, email, classes };
                             alert('Teacher updated successfully!');
-                            addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Updated Teacher', 'Teachers', `Updated teacher: ${fullName} (ID: ${id})`);
+                            addAuditLog(JSON.parse(null)?.name || 'Admin', 'Updated Teacher', 'Teachers', `Updated teacher: ${fullName} (ID: ${id})`);
                         }
                     } else {
                         // Add new teacher
@@ -4366,7 +4367,7 @@
                         };
                         teachers.push(newTeacher);
                         alert('Teacher added successfully!');
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Added Teacher', 'Teachers', `Added new teacher: ${fullName} (ID: ${newTeacher.id})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Added Teacher', 'Teachers', `Added new teacher: ${fullName} (ID: ${newTeacher.id})`);
                     }
                     
                     saveDataToLocalStorage();
@@ -4397,7 +4398,7 @@
                                 users[userIndex].password = password; // In a real app, this would be hashed
                             }
                             alert('User updated successfully!');
-                            addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Updated User', 'User Management', `Updated user: ${fullName} (ID: ${id})`);
+                            addAuditLog(JSON.parse(null)?.name || 'Admin', 'Updated User', 'User Management', `Updated user: ${fullName} (ID: ${id})`);
                         }
                     } else {
                         // Add new user
@@ -4415,7 +4416,7 @@
                         };
                         users.push(newUser);
                         alert('User added successfully!');
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Added User', 'User Management', `Added new user: ${fullName} (Role: ${role})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Added User', 'User Management', `Added new user: ${fullName} (Role: ${role})`);
                     }
                     
                     saveDataToLocalStorage();
@@ -4442,7 +4443,7 @@
                         if (announcementIndex > -1) {
                             announcements[announcementIndex] = { ...announcements[announcementIndex], title, content, status };
                             alert('Announcement updated successfully!');
-                            addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Updated Announcement', 'Announcements', `Updated: "${title}" (ID: ${id})`);
+                            addAuditLog(JSON.parse(null)?.name || 'Admin', 'Updated Announcement', 'Announcements', `Updated: "${title}" (ID: ${id})`);
                         }
                     } else {
                         // Add new announcement
@@ -4455,7 +4456,7 @@
                         };
                         announcements.push(newAnnouncement);
                         alert('Announcement published successfully!');
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Published Announcement', 'Announcements', `Published: "${title}"`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Published Announcement', 'Announcements', `Published: "${title}"`);
                     }
                     
                     saveDataToLocalStorage();
@@ -4493,7 +4494,7 @@
                         if (recordIndex > -1) {
                             attendanceRecords[recordIndex] = { ...attendanceRecords[recordIndex], studentId, date, status, remarks };
                             alert('Attendance record updated successfully!');
-                            addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Updated Attendance', 'Attendance', `Updated attendance for ${student.name} on ${date} to ${status}`);
+                            addAuditLog(JSON.parse(null)?.name || 'Admin', 'Updated Attendance', 'Attendance', `Updated attendance for ${student.name} on ${date} to ${status}`);
                         }
                     } else {
                         // Add new attendance record
@@ -4506,7 +4507,7 @@
                         };
                         attendanceRecords.push(newRecord);
                         alert('Attendance marked successfully!');
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Marked Attendance', 'Attendance', `Marked ${status} for ${student.name} on ${date}`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Marked Attendance', 'Attendance', `Marked ${status} for ${student.name} on ${date}`);
                     }
                     
                     saveDataToLocalStorage();
@@ -4544,7 +4545,7 @@
                         if (recordIndex > -1) {
                             teacherAttendanceRecords[recordIndex] = { ...teacherAttendanceRecords[recordIndex], teacherId, date, status, remarks };
                             alert('Teacher attendance record updated successfully!');
-                            addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Updated Teacher Attendance', 'Teacher Attendance', `Updated attendance for ${teacher.name} on ${date} to ${status}`);
+                            addAuditLog(JSON.parse(null)?.name || 'Admin', 'Updated Teacher Attendance', 'Teacher Attendance', `Updated attendance for ${teacher.name} on ${date} to ${status}`);
                         }
                     } else {
                         // Add new teacher attendance record
@@ -4557,7 +4558,7 @@
                         };
                         teacherAttendanceRecords.push(newRecord);
                         alert('Teacher attendance marked successfully!');
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Marked Teacher Attendance', 'Teacher Attendance', `Marked ${status} for ${teacher.name} on ${date}`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Marked Teacher Attendance', 'Teacher Attendance', `Marked ${status} for ${teacher.name} on ${date}`);
                     }
                     
                     saveDataToLocalStorage();
@@ -4640,12 +4641,12 @@
                         };
                         saveDataToLocalStorage();
                         alert(`Fingerprint registered successfully for ${student.name}!`);
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Registered Fingerprint', 'Attendance', `Registered fingerprint for student: ${student.name} (ID: ${student.id})`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Registered Fingerprint', 'Attendance', `Registered fingerprint for student: ${student.name} (ID: ${student.id})`);
 
                     } catch (error) {
                         console.error("Fingerprint registration failed:", error);
                         alert(`Fingerprint registration failed: ${error.message || error}`);
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Fingerprint Registration Failed', 'Attendance', `Failed to register fingerprint for student: ${student.name} - ${error.message}`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Fingerprint Registration Failed', 'Attendance', `Failed to register fingerprint for student: ${student.name} - ${error.message}`);
                     }
                 });
             }
@@ -4691,12 +4692,12 @@
                         alert(`Fingerprint verified successfully for ${student.name}! Attendance marked as Present.`);
                         document.getElementById('attendanceStatus').value = 'Present';
                         document.getElementById('attendanceFormSubmitBtn').click(); // Submit the form
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Verified Fingerprint', 'Attendance', `Verified fingerprint for student: ${student.name} (ID: ${student.id}) - Marked Present`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Verified Fingerprint', 'Attendance', `Verified fingerprint for student: ${student.name} (ID: ${student.id}) - Marked Present`);
 
                     } catch (error) {
                         console.error("Fingerprint verification failed:", error);
                         alert(`Fingerprint verification failed: ${error.message || error}`);
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Fingerprint Verification Failed', 'Attendance', `Failed to verify fingerprint for student: ${student.name} - ${error.message}`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Fingerprint Verification Failed', 'Attendance', `Failed to verify fingerprint for student: ${student.name} - ${error.message}`);
                     }
                 });
             }
@@ -4742,12 +4743,12 @@
                         alert(`Fingerprint verified successfully for ${teacher.name}! Attendance marked as Present.`);
                         document.getElementById('teacherAttendanceStatus').value = 'Present';
                         document.getElementById('teacherAttendanceFormSubmitBtn').click(); // Submit the form
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Verified Fingerprint', 'Teacher Attendance', `Verified fingerprint for teacher: ${teacher.name} (ID: ${teacher.id}) - Marked Present`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Verified Fingerprint', 'Teacher Attendance', `Verified fingerprint for teacher: ${teacher.name} (ID: ${teacher.id}) - Marked Present`);
 
                     } catch (error) {
                         console.error("Fingerprint verification failed:", error);
                         alert(`Fingerprint verification failed: ${error.message || error}`);
-                        addAuditLog(JSON.parse(localStorage.getItem('loggedInUser'))?.name || 'Admin', 'Fingerprint Verification Failed', 'Teacher Attendance', `Failed to verify fingerprint for teacher: ${teacher.name} - ${error.message}`);
+                        addAuditLog(JSON.parse(null)?.name || 'Admin', 'Fingerprint Verification Failed', 'Teacher Attendance', `Failed to verify fingerprint for teacher: ${teacher.name} - ${error.message}`);
                     }
                 });
             }
@@ -4757,12 +4758,12 @@
             function toggleDarkMode() {
                 document.body.classList.toggle('dark-mode');
                 const isDarkMode = document.body.classList.contains('dark-mode');
-                localStorage.setItem('darkMode', isDarkMode); // Save preference
+                 // Save preference
                 darkModeIcon.className = isDarkMode ? 'fas fa-sun text-gray-600' : 'fas fa-moon text-gray-600'; // Change icon
             }
 
             // Check for saved preference on load
-            if (localStorage.getItem('darkMode') === 'true') {
+            if (null === 'true') {
                 toggleDarkMode(); // Apply dark mode if saved
             } else {
                 // Ensure the moon icon is set if not in dark mode initially
@@ -4774,7 +4775,7 @@
 
 
             // Initial render of all tables when the page loads (if logged in)
-            if (localStorage.getItem('isLoggedIn') === 'true') {
+            if (null === 'true') {
                 renderAllTables();
                 updateDashboardStats();
                 renderRecentActivity();
@@ -4795,13 +4796,14 @@
   });
 </script>
 
+
 <script>
   document.getElementById('darkModeToggle').addEventListener('click', function () {
     document.body.classList.toggle('dark-mode');
-    localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+     ? 'dark' : 'light');
   });
   window.addEventListener('load', () => {
-    if (localStorage.getItem('theme') === 'dark') {
+    if (null === 'dark') {
       document.body.classList.add('dark-mode');
     }
   });
@@ -4838,17 +4840,32 @@ function startVoiceAssistant() {
 }
 </script>
 
-        <!-- This line is correct and necessary -->
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-        <!-- CORRECTED Supabase client initialization -->
-        <script>
-            // Renamed the client variable from 'supabase' to 'supabaseClient'
-            const supabase = supabase.createClient(
-                'https://wizyuwbezyltaxatkupc.supabase.co',
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA'
-            );
-        </script>
-       
+<script>
+  const supabase = supabase.createClient(
+    'https://https://wizyuwbezyltaxatkupc.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA'
+  );
+
+  // Store session automatically using Supabase's auth
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+      console.log('Session found:', session);
+    } else {
+      console.log('No session found. User not logged in.');
+    }
+  });
+
+  // Example login handler (replace with your own logic)
+  async function handleLogin(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      alert('Login failed: ' + error.message);
+    } else {
+      alert('Login successful');
+    }
+  }
+</script>
+
 </body>
 </html>
