@@ -4866,6 +4866,36 @@ function startVoiceAssistant() {
     }
   }
 </script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const loginForm = document.getElementById("loginForm");
+    const emailInput = document.getElementById("username");  // using 'username' as email
+    const passwordInput = document.getElementById("password");
+
+    if (loginForm && emailInput && passwordInput) {
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) {
+          alert("❌ Login failed: " + error.message);
+        } else {
+          alert("✅ Login successful!");
+          console.log(data);
+          // Optionally redirect:
+          // window.location.href = "/dashboard.html";
+        }
+      });
+    }
+  });
+</script>
 
 </body>
 </html>
