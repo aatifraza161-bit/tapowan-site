@@ -4858,7 +4858,7 @@ function startVoiceAssistant() {
 
   // Example login handler (replace with your own logic)
   async function handleLogin(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ admin, Aatif@123 });
     if (error) {
       alert('Login failed: ' + error.message);
     } else {
