@@ -4855,6 +4855,22 @@ supabase.auth.getSession().then(({ data: { session } }) => {
     console.log("❌ No session.");
   }
 });
+async function addStudent() {
+    const name = document.getElementById('studentName').value;
+    const className = document.getElementById('studentClass').value;
+    const rollNo = document.getElementById('studentRoll').value;
+
+    const { data, error } = await supabase
+      .from('students')
+      .insert([{ name, class: className, roll_no: rollNo }]);
+
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      alert('Student added successfully!');
+    }
+  }
+</script>
 
 // ✅ MODULE SWITCHING
 function showModule(moduleName) {
