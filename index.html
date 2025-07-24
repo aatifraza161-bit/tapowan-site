@@ -4822,5 +4822,46 @@ document.getElementById("loginForm").addEventListener("submit", async function (
     document.getElementById("loggedInUserName").innerText = email;
   }
 });
+        <script type="module">
+function showModule(moduleName) {
+  document.querySelectorAll("#modulesContainer > div").forEach(div => {
+    div.style.display = "none";
+  });
+
+  const selected = document.getElementById(moduleName + "Module");
+  if (selected) {
+    selected.style.display = "block";
+    document.getElementById("dashboardMainContent").style.display = "none";
+    document.getElementById("modulesContainer").classList.remove("hidden");
+  }
+}
+
+document.querySelectorAll(".nav-item").forEach(item => {
+  item.addEventListener("click", (e) => {
+    e.preventDefault();
+    showModule(item.dataset.module);
+  });
+});
+
+document.querySelectorAll(".open-module").forEach(btn => {
+  btn.addEventListener("click", () => {
+    showModule(btn.dataset.module);
+  });
+});
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    showModule(tab.dataset.tab);
+  });
+});
+
+document.getElementById("currentModuleTitle").addEventListener("click", () => {
+  document.getElementById("dashboardMainContent").style.display = "block";
+  document.getElementById("modulesContainer").classList.add("hidden");
+});
+</script>
+
 </script></body>
 </html>
