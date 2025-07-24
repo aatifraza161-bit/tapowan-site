@@ -4749,80 +4749,43 @@ function startVoiceAssistant() {
   recognition.start();
 }
 </script>
-<!-- ✅ Supabase Auth Configuration -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabase = supabase.createClient(
-    'https://wizyuwbezyltaxatkupc.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA'
-  );
-
-  // ✅ Define login handler FIRST
-  async function handleLogin(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert('❌ Login failed: ' + error.message);
-    } else {
-      alert('✅ Login successful');
-      console.log(data);
-      // Optional: window.location.href = "/dashboard.html";
-    }
-  }
-
-  // ✅ Wait for DOM before binding form
-  document.addEventListener("DOMContentLoaded", () => {
-    const loginForm = document.getElementById("loginForm");
-    const emailInput = document.getElementById("username");
-    const passwordInput = document.getElementById("password");
-
-    if (loginForm && emailInput && passwordInput) {
-      loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const username = emailInput.value.trim();
-        const email = username.includes("@") ? username : `${username}@example.com`;
-        const password = passwordInput.value.trim();
-
-        await handleLogin(email, password); // ✅ Call after function defined
-      });
-    }
-  });
-
-  // ✅ Optional: check session status
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) {
-      console.log('✅ Session found:', session);
-    } else {
-      console.log('❌ No session found.');
-    }
-  });
-</script>
-
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-const supabase = createClient('https://wizyuwbezyltaxatkupc.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA');
+const supabase = createClient(
+  'https://wizyuwbezyltaxatkupc.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA'
+);
 
+// ✅ LOGIN HANDLER
 document.getElementById("loginForm").addEventListener("submit", async function (e) {
   e.preventDefault();
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const emailInput = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const email = emailInput.includes("@") ? emailInput : `${emailInput}@example.com`;
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    alert("Login failed: " + error.message);
+    alert("❌ Login failed: " + error.message);
   } else {
     document.getElementById("login-ui").style.display = "none";
     document.getElementById("school-site-ui").style.display = "block";
     document.getElementById("loggedInUserName").innerText = email;
   }
 });
-        <script type="module">
+
+// ✅ OPTIONAL: Show logged-in session in console
+supabase.auth.getSession().then(({ data: { session } }) => {
+  if (session) {
+    console.log("✅ Session found:", session);
+  } else {
+    console.log("❌ No session.");
+  }
+});
+
+// ✅ MODULE SWITCHING
 function showModule(moduleName) {
   document.querySelectorAll("#modulesContainer > div").forEach(div => {
     div.style.display = "none";
@@ -4861,5 +4824,6 @@ document.getElementById("currentModuleTitle").addEventListener("click", () => {
   document.getElementById("dashboardMainContent").style.display = "block";
   document.getElementById("modulesContainer").classList.add("hidden");
 });
-</script></body>
+</script>
+</body>
 </html>
