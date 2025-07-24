@@ -2118,7 +2118,6 @@
 </div>
 </div>
 </div>
-</div>
 <!-- View All Notifications Modal -->
 <div aria-labelledby="viewAllTitle" aria-modal="true" class="view-all-modal" id="viewAllModal" role="dialog" tabindex="-1">
 <div class="view-all-content">
@@ -2163,7 +2162,7 @@
 </div>
 </div>
 <!-- Add Invoice Modal -->
-<div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="addInvoiceModal">
+<div class="hidden fixed inset-0 bg-black bg-opacity50 flex items-center justify-center z-50" id="addInvoiceModal">
 <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
 <div class="flex justify-between items-center mb-4">
 <h3 class="text-xl font-semibold">Add New Invoice</h3>
@@ -2703,11 +2702,25 @@
             // This part needs to check Supabase auth session
             supabase.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
-                    localStorage.setItem('loggedInUser', JSON.stringify({ name: session.user.email, email: session.user.email, role: 'Admin' })); // Store basic user info
+                    // Ensure localStorage is populated from the session if it's not already
+                    const storedUser = localStorage.getItem('loggedInUser');
+                    if (!storedUser || JSON.parse(storedUser).email !== session.user.email) {
+                        // If no user in localStorage or it's a different user, populate from session
+                        // You might need to fetch the user's role from a 'profiles' table here
+                        // For simplicity, we'll assume 'Admin' or infer from email if possible
+                        localStorage.setItem('loggedInUser', JSON.stringify({
+                            name: session.user.email, // Or fetch from a profile table
+                            email: session.user.email,
+                            role: 'Admin' // Default, or fetch from your user profiles table
+                        }));
+                    }
                     showSchoolSiteUi();
                 } else {
                     showLoginUi();
                 }
+            }).catch(error => {
+                console.error("Error getting Supabase session:", error);
+                showLoginUi(); // Fallback to login UI on error
             });
 
             // --- Login UI Logic ---
@@ -2726,18 +2739,28 @@
                 const password = document.getElementById('password').value;
                 const role = selectedRoleInput.value; // Role is selected on UI, not from Supabase Auth directly
 
-                // Supabase Auth handles user login
-                const { data, error } = await supabase.auth.signInWithPassword({ email: emailInput, password: password });
+                try {
+                    // Supabase Auth handles user login
+                    const { data, error } = await supabase.auth.signInWithPassword({ email: emailInput, password: password });
 
-                if (error) {
-                    alert('Login failed: ' + error.message);
-                    addAuditLog(emailInput, 'Login Failed', 'Authentication', `Attempted login for role: ${role} - ${error.message}`);
-                } else {
-                    alert('Login successful!');
-                    // Store user info in localStorage for UI display (not for auth)
-                    localStorage.setItem('loggedInUser', JSON.stringify({ name: data.user.email, email: data.user.email, role: role }));
-                    showSchoolSiteUi();
-                    addAuditLog(data.user.email, 'Logged In', 'Authentication', `Successful login for role: ${role}`);
+                    if (error) {
+                        throw error; // Re-throw login error
+                    }
+
+                    if (data && data.user) {
+                        alert('Login successful!');
+                        // Store user info in localStorage for UI display (not for auth)
+                        localStorage.setItem('loggedInUser', JSON.stringify({ name: data.user.email, email: data.user.email, role: role }));
+                        showSchoolSiteUi();
+                        addAuditLog(data.user.email, 'Logged In', 'Authentication', `Successful login for role: ${role}`);
+                    } else {
+                        alert('Login failed: No user data received.');
+                        addAuditLog(emailInput, 'Login Failed', 'Authentication', `No user data received after login attempt for role: ${role}`);
+                    }
+
+                } catch (error) {
+                    alert('Authentication failed: ' + error.message);
+                    addAuditLog(emailInput, 'Authentication Failed', 'Authentication', `Attempted authentication for role: ${role} - ${error.message}`);
                 }
             });
 
@@ -4903,8 +4926,8 @@
                     ];
                     users = users.length > 0 ? users : [ // Local users for demo roles, replace with Supabase profiles if needed
                         { id: 'U001', name: 'Admin', email: 'admin@tps.com', role: 'Admin', status: 'Active', password: 'Aatif@123' },
-                        { id: 'U002', name: 'Teacher', email: 'jane.doe@school.com', role: 'Teacher', status: 'Active', password: 'Aatif@123' },
-                        { id: 'U003', name: 'Student', email: 'john.smith@school.com', role: 'Student', status: 'Active', password: 'Aatif@123' }
+                        { id: 'U002', name: 'Teacher', email: 'jane.doe@school.com', role: 'Teacher', status: 'Active', password: 'Aatif@100' },
+                        { id: 'U003', name: 'Student', email: 'john.smith@school.com', role: 'Student', status: 'Active', password: 'Aatif@100' }
                     ];
 
 
