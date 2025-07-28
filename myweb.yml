@@ -1,31 +1,54 @@
-name: CI
+name: Supabase Database Setup
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  POSTGRES_VERSION: '15'
+  DB_NAME: 'app_db'
+  ADMIN_USER: 'admin_login'
+  ADMIN_PASSWORD: 'Aatif@123' # Note: For production, use GitHub Secrets
 
 jobs:
-  build:
+  setup-db:
     runs-on: ubuntu-latest
-
     services:
       postgres:
-        image: postgres:latest
+        image: postgres:${{ env.POSTGRES_VERSION }}
         env:
-          POSTGRES_USER: admin_login
-          POSTGRES_PASSWORD: Aatif@123
-          POSTGRES_DB: your_database_name
+          POSTGRES_DB: ${{ env.DB_NAME }}
+          POSTGRES_USER: ${{ env.ADMIN_USER }}
+          POSTGRES_PASSWORD: ${{ env.ADMIN_PASSWORD }}
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U admin_login"
+          --health-cmd "pg_isready -U ${{ env.ADMIN_USER }}"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Run database migrations
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create test table
         run: |
-          sudo apt-get install postgresql-client
-          psql -h localhost -U admin_login -d your_database_name -c "your SQL commands here"
+          psql "postgresql://${{ env.ADMIN_USER }}:${{ env.ADMIN_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" <<EOF
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+          );
+          INSERT INTO users (username, email) VALUES ('admin', 'admin@example.com');
+          EOF
+
+      - name: Verify setup
+        run: |
+          psql "postgresql://${{ env.ADMIN_USER }}:${{ env.ADMIN_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" \
+            -c "SELECT * FROM users;"
