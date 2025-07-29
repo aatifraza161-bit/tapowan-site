@@ -31,7 +31,7 @@ jobs:
       run: |
         # Add your database test commands here
         # Example: psql connection or custom test script
-        psql "postgresql://postgres.wizyuwbezyltaxatkupc:goBtzGLmYfgTfMA9@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" -c "SELECT version();"
+        psql "" -c "SELECT version();"
 
     # Optional: Lint database schema
     - name: Database Schema Lint
