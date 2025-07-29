@@ -11,7 +11,7 @@ let attendanceRecords = [];
 let teacherAttendanceRecords = [];
 
 // Supabase Client Initialization (Replace with your actual keys)
-const SUPABASE_URL = 'https://wizyuwbezyltaxatkupc.supabase.co/storage/v1/s3'; // Replace with your Supabase URL
+const SUPABASE_URL = 'https://wizyuwbezyltaxatkupc.supabase.co'; // Replace with your Supabase URL
 // IMPORTANT: Replace this with your actual Supabase Anon Key. The one provided was malformed.
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA'; // Replace with your actual Supabase Anon Key
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -264,7 +264,7 @@ const closeForgotPasswordModal = document.getElementById('closeForgotPasswordMod
 const forgotPasswordForm = document.getElementById('forgotPasswordForm');
 
 // School Site UI Elements
-const logoutButton = document.getElementById('logoutButton');
+// const logoutButton = document.getElementById('logoutButton'); // Removed logout button
 const notificationButton = document.getElementById('notificationButton');
 const notificationDropdown = document.getElementById('notificationDropdown');
 const markAllReadBtn = document.getElementById('markAllReadBtn');
@@ -691,7 +691,7 @@ async function handleLogin() {
             // Other roles must match their registered role.
             if (userRole !== selectedRole && selectedRole !== 'admin') {
                 alert(`Login failed: You are registered as a ${userRole}, not a ${selectedRole}. Please select your correct role.`);
-                await supabase.auth.signOut(); // Sign out the user immediately on role mismatch
+                // Removed supabase.auth.signOut() here to keep only login functionality
                 await addAuditLog(emailInput, 'Login Failed (Role Mismatch)', 'Authentication', `User ${emailInput} attempted login as ${selectedRole}, but actual role is ${userRole}.`);
                 return;
             }
@@ -775,7 +775,8 @@ if (forgotPasswordForm) {
 
 // --- School Site UI Logic ---
 
-// Logout functionality
+// Removed Logout functionality
+/*
 if (logoutButton) {
     logoutButton.addEventListener('click', async function() {
         if (confirm('Are you sure you want to logout?')) {
@@ -804,6 +805,7 @@ if (logoutButton) {
         }
     });
 }
+*/
 
 // Holiday Data (still static for now)
 const holidays = [
@@ -2572,28 +2574,10 @@ if (userForm) {
                     auditDetails = `Updated user ${email} role to ${role} by admin.`;
                 }
             } else {
-                // Logic for creating a new user
-                if (!password) {
-                    alert('Password is required for new users.');
-                    return;
-                }
-                // When signing up a new user, the role is passed in the `data` option,
-                // which populates the `raw_user_meta_data` in Supabase.
-                const { data: authData, error: authError } = await supabase.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            name: fullName,
-                            role: role // This sets the role in user_metadata
-                        },
-                    },
-                });
-                if (authError) throw authError;
-                alert('User added successfully! An email has been sent for confirmation.');
-                operationSuccess = true;
-                auditAction = 'Added User';
-                auditDetails = `Added new user: ${fullName} (Role: ${role})`;
+                // Removed the signup new user function
+                alert('New user creation is not supported from this client-side form. Please use Supabase console or a backend service.');
+                auditAction = 'Attempted Add User (Client-side)';
+                auditDetails = `Attempted to add new user ${email} (client-side not supported).`;
             }
         } catch (error) {
             alert((id ? 'Error updating' : 'Error creating') + ' user: ' + error.message);
