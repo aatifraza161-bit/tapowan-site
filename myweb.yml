@@ -7,8 +7,8 @@ jobs:
     
     env:
       SUPABASE_URL: https://wizyuwbezyltaxatkupc.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzEwNzUzOCwiZXhwIjoyMDY4NjgzNTM4fQ.vFHnozyg-q-St6W5hFQljs5SsFI1r169fLj21_MnyCw
-      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA 
+      SUPABASE_SERVICE_ROLE_KEY: 
+      SUPABASE_ANON_KEY: 
 
     steps:
     - uses: actions/checkout@v3
