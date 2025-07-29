@@ -1,54 +1,39 @@
-name: Supabase Database Setup
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-env:
-  POSTGRES_VERSION: '15'
-  DB_NAME: 'app_db'
-  ADMIN_USER: 'admin_login'
-  ADMIN_PASSWORD: 'Aatif@123' # Note: For production, use GitHub Secrets
+name: Supabase Database CI
+on: [push, pull_request]
 
 jobs:
-  setup-db:
+  database-tests:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
-        env:
-          POSTGRES_DB: ${{ env.DB_NAME }}
-          POSTGRES_USER: ${{ env.ADMIN_USER }}
-          POSTGRES_PASSWORD: ${{ env.ADMIN_PASSWORD }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ${{ env.ADMIN_USER }}"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    
+    env:
+      SUPABASE_URL: ${{ https://wizyuwbezyltaxatkupc.supabase.co }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{  }}
+      SUPABASE_ANON_KEY: ${{ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpenl1d2JlenlsdGF4YXRrdXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMDc1MzgsImV4cCI6MjA2ODY4MzUzOH0.akCyzqHG4LIhboUBy36djCKHjRVDfb5KoTPNiIY3AtA }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
 
-      - name: Create test table
-        run: |
-          psql "postgresql://${{ env.ADMIN_USER }}:${{ env.ADMIN_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" <<EOF
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50) UNIQUE NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT NOW()
-          );
-          INSERT INTO users (username, email) VALUES ('admin', 'admin@example.com');
-          EOF
+    - name: Verify Supabase Connection
+      run: |
+        supabase status
+        supabase db version
 
-      - name: Verify setup
-        run: |
-          psql "postgresql://${{ env.ADMIN_USER }}:${{ env.ADMIN_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" \
-            -c "SELECT * FROM users;"
+    - name: Run Database Migrations
+      run: |
+        supabase db push
+
+    - name: Run Database Tests
+      run: |
+        # Add your database test commands here
+        # Example: psql connection or custom test script
+        psql "$SUPABASE_DB_URL" -c "SELECT version();"
+
+    # Optional: Lint database schema
+    - name: Database Schema Lint
+      run: |
+        supabase db lint
