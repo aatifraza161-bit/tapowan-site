@@ -509,8 +509,8 @@ const darkModeIcon = darkModeToggle.querySelector('i');
 const reportsModule = document.getElementById('reportsModule'); // Defined in original, but not const
 const navItems = document.querySelectorAll('.nav-item'); // Assuming these exist
 const moduleTabs = document.getElementById('moduleTabs'); // Assuming this exists
-const profileForm = document.getElementById('profileForm'); // Assuming this exists
-const profilePictureInput = document.getElementById('profilePictureInput'); // Assuming this exists
+const profileForm = document.getElementById('profileForm'); // Assuming these exist
+const profilePictureInput = document.getElementById('profilePictureInput'); // Assuming these exist
 
 // --- Initial UI State Management ---
 
@@ -879,7 +879,7 @@ roleButtons.forEach(button => {
  * Verifies selected role against user_metadata.
  */
 async function handleLogin() {
-    const emailInput = document.getElementById('email').value.trim();
+    const emailInput = document.getElementById('loginEmail').value.trim(); // Changed ID to loginEmail
     const passwordInput = document.getElementById('password').value.trim();
     const selectedRole = document.getElementById('selectedRole').value;
 
