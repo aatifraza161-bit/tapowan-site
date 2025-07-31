@@ -85,232 +85,6 @@ function base64ToArrayBuffer(base64) {
     return bytes.buffer;
 }
 
-// --- Data Fetching Functions (from Supabase) ---
-
- // Reports Module
-    reportsModule = document.getElementById('reportsModule');
-    // attendanceChart and performanceChart are initialized later
-
-    // --- Event Listeners ---
-    loginForm.addEventListener('submit', handleLogin);
-    forgotPasswordLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggleModal(forgotPasswordModal, true);
-    });
-    closeForgotPasswordModal.addEventListener('click', () => toggleModal(forgotPasswordModal, false));
-    forgotPasswordForm.addEventListener('submit', handleForgotPassword);
-
-    roleButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            roleButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            selectedRoleInput.value = button.dataset.role;
-        });
-    });
-
-    navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const module = item.dataset.module;
-            showModule(module);
-        });
-    });
-
-    moduleTabs.addEventListener('click', (e) => {
-        if (e.target.classList.contains('tab')) {
-            const module = e.target.dataset.tab;
-            showModule(module);
-        }
-    });
-
-    document.querySelectorAll('.open-module').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            const module = e.target.dataset.module;
-            showModule(module);
-        });
-    });
-
-    userProfileToggle.addEventListener('click', () => {
-        userDropdown.classList.toggle('hidden');
-    });
-
-    logoutButton.addEventListener('click', handleLogout);
-
-    document.addEventListener('click', (event) => {
-        if (userProfileToggle && userDropdown && !userProfileToggle.contains(event.target) && !userDropdown.contains(event.target)) {
-            userDropdown.classList.add('hidden');
-        }
-        if (notificationButton && notificationDropdown && viewAllModal && !notificationButton.contains(event.target) && !notificationDropdown.contains(event.target) && !viewAllModal.contains(event.target)) {
-            notificationDropdown.classList.add('hidden');
-        }
-    });
-
-    notificationButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        notificationDropdown.classList.toggle('hidden');
-    });
-    markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
-    viewAllNotificationsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        showAllNotifications();
-        toggleModal(notificationDropdown, false);
-    });
-    closeViewAllModal.addEventListener('click', () => toggleModal(viewAllModal, false));
-    modalMarkAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
-
-    darkModeToggle.addEventListener('click', toggleDarkMode);
-
-    // Modal close buttons
-    if (closeUserModal) closeUserModal.addEventListener('click', () => toggleModal(userModal, false));
-    if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', () => toggleModal(announcementModal, false));
-    if (closeStudentModal) closeStudentModal.addEventListener('click', () => toggleModal(studentModal, false));
-    if (closeTeacherModal) closeTeacherModal.addEventListener('click', () => toggleModal(teacherModal, false));
-    if (closePayrollModalBtn) closePayrollModalBtn.addEventListener('click', () => toggleModal(payrollModal, false));
-    if (closeAddInvoiceModalBtn) closeAddInvoiceModalBtn.addEventListener('click', () => toggleModal(addInvoiceModal, false));
-    if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', () => toggleModal(attendanceModal, false));
-    if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', () => toggleModal(teacherAttendanceModal, false));
-
-    // Student Module Specific Listeners
-    if (applySearchButton) applySearchButton.addEventListener('click', filterStudents);
-    if (searchRollInput) searchRollInput.addEventListener('input', filterStudents);
-    if (searchClassSelect) searchClassSelect.addEventListener('change', filterStudents);
-
-    // Attendance Module Specific Listeners
-    if (applyAttendanceFilter) applyAttendanceFilter.addEventListener('click', filterStudentAttendance);
-    if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('input', filterStudentAttendance);
-    if (attendanceClassFilter) attendanceClassFilter.addEventListener('change', filterStudentAttendance);
-    if (attendanceDateFilter) attendanceDateFilter.addEventListener('change', filterStudentAttendance);
-    if (registerStudentFingerprintBtn) registerStudentFingerprintBtn.addEventListener('click', () => {
-        showToast('Student fingerprint registration initiated (simulated).', 'info');
-    });
-    if (verifyStudentFingerprintBtn) verifyStudentFingerprintBtn.addEventListener('click', () => {
-        showToast('Student fingerprint verification initiated (simulated). Marking present if successful.', 'info');
-        if (attendanceStatusSelect) attendanceStatusSelect.value = 'Present';
-        showToast('Student marked Present via fingerprint (simulated).', 'success');
-    });
-
-    // Teacher Attendance Module Specific Listeners
-    if (applyTeacherAttendanceFilter) applyTeacherAttendanceFilter.addEventListener('click', filterTeacherAttendance);
-    if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('input', filterTeacherAttendance);
-    if (teacherAttendanceSubjectFilter) teacherAttendanceSubjectFilter.addEventListener('change', filterTeacherAttendance);
-    if (teacherAttendanceDateFilter) teacherAttendanceDateFilter.addEventListener('change', filterTeacherAttendance);
-    if (registerTeacherFingerprintBtn) registerTeacherFingerprintBtn.addEventListener('click', () => {
-        showToast('Teacher fingerprint registration initiated (simulated).', 'info');
-    });
-    if (verifyTeacherFingerprintBtn) verifyTeacherFingerprintBtn.addEventListener('click', () => {
-        showToast('Teacher fingerprint verification initiated (simulated). Marking present if successful.', 'info');
-        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = 'Present';
-        showToast('Teacher marked Present via fingerprint (simulated).', 'success');
-    });
-
-    // Forms
-    if (profileForm) profileForm.addEventListener('submit', profileFormSubmitHandler);
-    if (profilePictureInput) profilePictureInput.addEventListener('change', profilePictureChangeHandler);
-    if (userForm) userForm.addEventListener('submit', userFormSubmitHandler);
-    if (announcementForm) announcementForm.addEventListener('submit', announcementFormSubmitHandler);
-    if (studentForm) studentForm.addEventListener('submit', studentFormSubmitHandler);
-    if (teacherForm) teacherForm.addEventListener('submit', teacherFormSubmitHandler);
-    if (payrollForm) payrollForm.addEventListener('submit', payrollFormSubmitHandler);
-    if (addInvoiceForm) addInvoiceForm.addEventListener('submit', addInvoiceFormSubmitHandler);
-    if (attendanceForm) attendanceForm.addEventListener('submit', attendanceFormSubmitHandler);
-    if (teacherAttendanceForm) teacherAttendanceForm.addEventListener('submit', teacherAttendanceFormSubmitHandler);
-
-
-    // --- Initial Load ---
-    console.log('DOMContentLoaded fired.'); // DEBUG
-    applyTheme();
-    await loadNotifications(); // Load notifications from Supabase
-
-    // Check Supabase session initially
-    const { data: { session }, error } = await supabase.auth.getSession();
-    console.log('Initial Supabase session check. Session:', session, 'Error:', error); // DEBUG
-
-    if (session) {
-        // User is logged in via Supabase Auth
-        const userEmail = session.user?.email; // Safely access email
-        const userData = await fetchUserData(userEmail); // Using the new function
-
-        if (!userData) {
-            console.error('Error fetching user data from public.profiles: User data not found or inconsistent. Forcing logout.');
-            showToast('Failed to retrieve user role. Please log in again.', 'error');
-            await supabase.auth.signOut(); // Force logout if user data is inconsistent
-            renderLoginUi();
-            return;
-        }
-
-        localStorage.setItem('loggedInUserRole', userData.role);
-        localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
-        console.log('Session found on DOMContentLoaded. Calling renderSchoolSite().'); // DEBUG
-        renderSchoolSite();
-    } else {
-        // No active session, show login UI
-        console.log('No session found on DOMContentLoaded. Calling renderLoginUi().'); // DEBUG
-        renderLoginUi();
-    }
-
-    // Listen for auth state changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN') {
-            // Explicitly fetch user profile
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session?.user.id)
-                .single();
-
-            if (profileError && profileError.code === 'PGRST116') { // No rows found
-                console.warn('No profile found for new user, creating one.');
-                // Create a profile for the newly signed-up user
-                await supabase
-                    .from('profiles')
-                    .upsert({
-                        id: session.user.id,
-                        email: session.user.email,
-                        full_name: session.user.email.split('@')[0], // Default full name
-                        role: 'student', // Default role for new sign-ups
-                        status: 'Active'
-                    });
-            } else if (profileError) {
-                console.error('Profile fetch error on auth state change:', profileError);
-                showToast('Error fetching user profile. Please try again.', 'error');
-                await supabase.auth.signOut();
-                renderLoginUi();
-                return;
-            }
-
-            // After handling profile, proceed with rendering the site
-            const userEmail = session.user.email;
-            const userData = await fetchUserData(userEmail);
-
-            if (!userData) {
-                console.error('Error fetching user data on auth state change: User data not found. Forcing logout.');
-                showToast('Failed to retrieve user role. Please log in again.', 'error');
-                await supabase.auth.signOut();
-                renderLoginUi();
-                return;
-            }
-            localStorage.setItem('loggedInUserRole', userData.role);
-            localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
-            renderSchoolSite();
-
-            // Added code: Fetch user data by ID and log it (for debugging)
-            const userId = session.user.id;
-            const { data, error: fetchError } = await supabase
-                .from('profiles') // Changed from 'users' to 'profiles'
-                .select('*')
-                .eq('id', userId);
-            console.log('User data from public.profiles table on auth state change (for debugging):', data);
-        } else if (event === 'SIGNED_OUT') {
-            localStorage.removeItem('loggedInUserRole');
-            localStorage.removeItem('loggedInUserName');
-            renderLoginUi();
-        }
-    });
-});
-
-// --- Utility Functions ---
-
 /**
  * Displays a toast notification.
  * @param {string} message - The message to display.
@@ -507,6 +281,77 @@ async function fetchUserData(email) {
     }
 }
 
+// --- Data Fetching Functions (from Supabase) ---
+async function fetchStudents() {
+    students = await fetchData('students');
+    renderStudentTable();
+    updateDashboardStats();
+}
+
+async function fetchTeachers() {
+    teachers = await fetchData('teachers');
+    renderTeacherTable();
+    updateDashboardStats();
+}
+
+async function fetchPayrollEntries() {
+    payrollEntries = await fetchData('payroll_entries');
+    renderPayrollTable();
+}
+
+async function fetchInvoices() {
+    invoices = await fetchData('invoices');
+    renderFinanceTable();
+    updateDashboardStats();
+}
+
+async function fetchAnnouncements() {
+    announcements = await fetchData('announcements');
+    renderAnnouncementTable();
+}
+
+async function fetchNotifications() {
+    // Notifications are client-side for simplicity, so load from localStorage
+    const storedNotifications = localStorage.getItem('notifications');
+    if (storedNotifications) {
+        notifications = JSON.parse(storedNotifications);
+    } else {
+        // Default notifications if none exist
+        notifications = [
+            { id: '1', title: 'Welcome!', description: 'Welcome to the School Management System!', time: 'Just now', unread: true },
+            { id: '2', title: 'New Feature', description: 'Check out the new attendance module.', time: '1 hour ago', unread: true },
+            { id: '3', title: 'System Update', description: 'System maintenance scheduled for Sunday.', time: 'Yesterday', unread: false },
+        ];
+        localStorage.setItem('notifications', JSON.stringify(notifications));
+    }
+    renderDropdownNotifications();
+}
+
+async function fetchAuditLogs() {
+    auditLogs = await fetchData('audit_logs');
+    renderAuditLogs();
+    renderRecentActivity();
+}
+
+async function fetchBackups() {
+    // Backups are client-side for simplicity
+    backups = [
+        { backup_id: 'BK001', date: '2024-03-01T10:00:00Z', size: '100MB', type: 'Full' },
+        { backup_id: 'BK002', date: '2024-03-08T10:00:00Z', size: '10MB', type: 'Incremental' },
+        { backup_id: 'BK003', date: '2024-03-15T10:00:00Z', size: '15MB', type: 'Incremental' },
+    ];
+    renderBackupTable();
+}
+
+async function fetchAttendanceRecords() {
+    attendanceRecords = await fetchData('attendance_records');
+    renderAttendanceTable();
+}
+
+async function fetchTeacherAttendanceRecords() {
+    teacherAttendanceRecords = await fetchData('teacher_attendance_records');
+    renderTeacherAttendanceTable();
+}
 
 // --- Initial Data Load ---
 async function loadAllData() {
@@ -541,7 +386,7 @@ const closeForgotPasswordModal = document.getElementById('closeForgotPasswordMod
 const forgotPasswordForm = document.getElementById('forgotPasswordForm');
 
 // School Site UI Elements
-// const logoutButton = document.getElementById('logoutButton'); // Removed logout button
+const logoutButton = document.getElementById('logoutButton'); // Re-added logout button
 const notificationButton = document.getElementById('notificationButton');
 const notificationDropdown = document.getElementById('notificationDropdown');
 const markAllReadBtn = document.getElementById('markAllReadBtn');
@@ -635,6 +480,7 @@ const attendanceTotalPresent = document.getElementById('attendanceTotalPresent')
 const attendanceTotalAbsent = document.getElementById('attendanceTotalAbsent');
 const registerStudentFingerprintBtn = document.getElementById('registerStudentFingerprintBtn');
 const verifyStudentFingerprintBtn = document.getElementById('verifyStudentFingerprintBtn');
+const attendanceStatusSelect = document.getElementById('attendanceStatus'); // Added for fingerprint simulation
 
 // Teacher Attendance Module Elements
 const teacherAttendanceModal = document.getElementById('teacherAttendanceModal');
@@ -653,10 +499,18 @@ const teacherAttendanceTotalPresent = document.getElementById('teacherAttendance
 const teacherAttendanceTotalAbsent = document.getElementById('teacherAttendanceTotalAbsent');
 const registerTeacherFingerprintBtn = document.getElementById('registerTeacherFingerprintBtn');
 const verifyTeacherFingerprintBtn = document.getElementById('verifyTeacherFingerprintBtn');
+const teacherAttendanceStatusSelect = document.getElementById('teacherAttendanceStatus'); // Added for fingerprint simulation
 
 // Dark Mode Elements
 const darkModeToggle = document.getElementById('darkModeToggle');
 const darkModeIcon = darkModeToggle.querySelector('i');
+
+// Other UI elements that were referenced but not defined in the original snippet
+const reportsModule = document.getElementById('reportsModule'); // Defined in original, but not const
+const navItems = document.querySelectorAll('.nav-item'); // Assuming these exist
+const moduleTabs = document.getElementById('moduleTabs'); // Assuming this exists
+const profileForm = document.getElementById('profileForm'); // Assuming this exists
+const profilePictureInput = document.getElementById('profilePictureInput'); // Assuming this exists
 
 // --- Initial UI State Management ---
 
@@ -723,7 +577,7 @@ function updateUIAccessByRole() {
         // If no role is found, it defaults to 'admin' for broader access in this demo.
         if (loggedInUser.raw_user_meta_data?.role) {
             userRole = loggedInUser.raw_user_meta_data.role; // Highest priority for raw_user_meta_data
-        } else if (loggedInUser.app_metadata?.role) { 
+        } else if (loggedInUser.app_metadata?.role) {
             userRole = loggedInUser.app_metadata.role; // Second priority for app_metadata
         } else {
             userRole = 'admin'; // Default fallback if no role is explicitly set
@@ -891,7 +745,7 @@ function updateUIElementsForRole(role) {
         if (role === 'admin') {
             openAddInvoiceModalBtn.classList.remove('hidden');
         } else {
-            openAddInvoiceModal.classList.add('hidden');
+            openAddInvoiceModalBtn.classList.add('hidden');
         }
     }
 }
@@ -1003,13 +857,13 @@ if (loginForm) {
 if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener('click', function(event) {
         event.preventDefault();
-        forgotPasswordModal.classList.add('active');
+        toggleModal(forgotPasswordModal, true); // Use toggleModal
     });
 }
 
 if (closeForgotPasswordModal) {
     closeForgotPasswordModal.addEventListener('click', function() {
-        forgotPasswordModal.classList.remove('active');
+        toggleModal(forgotPasswordModal, false); // Use toggleModal
         forgotPasswordForm.reset();
     });
 }
@@ -1017,43 +871,43 @@ if (closeForgotPasswordModal) {
 if (forgotPasswordModal) {
     forgotPasswordModal.addEventListener('click', function(event) {
         if (event.target === forgotPasswordModal) {
-            forgotPasswordModal.classList.remove('active');
+            toggleModal(forgotPasswordModal, false); // Use toggleModal
             forgotPasswordForm.reset();
         }
     });
 }
 
+async function handleForgotPassword(event) {
+    event.preventDefault();
+    const email = document.getElementById('forgotEmail').value;
+    if (!email) {
+        alert('Please enter your email address.');
+        return;
+    }
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) {
+            alert('Error sending reset link: ' + error.message);
+            await addAuditLog(email, 'Forgot Password Failed', 'Authentication', `Failed to send reset link: ${error.message}`);
+        } else {
+            alert('If an account with that email exists, a password reset link has been sent to ' + email + '.');
+            await addAuditLog(email, 'Forgot Password Initiated', 'Authentication', 'Password reset link sent.');
+        }
+    } catch (err) {
+        console.error('Unexpected error during password reset:', err);
+        alert('An unexpected error occurred: ' + err.message);
+    } finally {
+        toggleModal(forgotPasswordModal, false); // Use toggleModal
+        forgotPasswordForm.reset();
+    }
+}
+
 if (forgotPasswordForm) {
-    forgotPasswordForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        const email = document.getElementById('forgotEmail').value;
-        if (!email) {
-            alert('Please enter your email address.');
-            return;
-        }
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
-            if (error) {
-                alert('Error sending reset link: ' + error.message);
-                await addAuditLog(email, 'Forgot Password Failed', 'Authentication', `Failed to send reset link: ${error.message}`);
-            } else {
-                alert('If an account with that email exists, a password reset link has been sent to ' + email + '.');
-                await addAuditLog(email, 'Forgot Password Initiated', 'Authentication', 'Password reset link sent.');
-            }
-        } catch (err) {
-            console.error('Unexpected error during password reset:', err);
-            alert('An unexpected error occurred: ' + err.message);
-        } finally {
-            forgotPasswordModal.classList.remove('active');
-            forgotPasswordForm.reset();
-        }
-    });
+    forgotPasswordForm.addEventListener('submit', handleForgotPassword);
 }
 
 // --- School Site UI Logic ---
 
-// Removed Logout functionality
-/*
 if (logoutButton) {
     logoutButton.addEventListener('click', async function() {
         if (confirm('Are you sure you want to logout?')) {
@@ -1067,13 +921,22 @@ if (logoutButton) {
                 showLoginUi();
                 // Reset UI elements to default dashboard view
                 document.querySelectorAll('.module-content').forEach(m => m.classList.add('hidden'));
-                document.getElementById('dashboardMainContent').classList.remove('hidden');
-                document.getElementById('moduleTabs').classList.remove('hidden');
-                document.getElementById('modulesContainer').classList.add('hidden');
+                const dashboardMainContent = document.getElementById('dashboardMainContent');
+                const moduleTabs = document.getElementById('moduleTabs');
+                const modulesContainer = document.getElementById('modulesContainer');
+
+                if (dashboardMainContent) dashboardMainContent.classList.remove('hidden');
+                if (moduleTabs) moduleTabs.classList.remove('hidden');
+                if (modulesContainer) modulesContainer.classList.add('hidden');
+
                 document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-                document.querySelector('.nav-item[data-module="dashboard"]').classList.add('active');
+                const dashboardNavItem = document.querySelector('.nav-item[data-module="dashboard"]');
+                if (dashboardNavItem) dashboardNavItem.classList.add('active');
+
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelector('.tab[data-tab="dashboard"]').classList.add('active');
+                const dashboardTab = document.querySelector('.tab[data-tab="dashboard"]');
+                if (dashboardTab) dashboardTab.classList.add('active');
+
             } catch (error) {
                 console.error('Error logging out:', error);
                 alert('Error logging out: ' + error.message);
@@ -1082,7 +945,7 @@ if (logoutButton) {
         }
     });
 }
-*/
+
 
 // Holiday Data (still static for now)
 const holidays = [
@@ -1215,7 +1078,7 @@ function renderHolidayList() {
 window.showModule = async function(moduleName) {
     const dashboardMainContent = document.getElementById('dashboardMainContent');
     const modulesContainer = document.getElementById('modulesContainer');
-    const moduleTabs = document.getElementById('moduleTabs');
+    const moduleTabsElement = document.getElementById('moduleTabs'); // Renamed to avoid conflict
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
     // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
     const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role || 'admin' : null;
@@ -1242,22 +1105,27 @@ window.showModule = async function(moduleName) {
         return;
     }
 
-    currentModuleTitle.textContent = moduleName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    if (currentModuleTitle) { // Check if element exists
+        currentModuleTitle.textContent = moduleName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+
 
     document.querySelectorAll('.module-content').forEach(m => m.classList.add('hidden'));
-    dashboardMainContent.classList.add('hidden');
-    modulesContainer.classList.remove('hidden');
+    if (dashboardMainContent) dashboardMainContent.classList.add('hidden');
+    if (modulesContainer) modulesContainer.classList.remove('hidden');
 
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
 
     if (moduleName === 'dashboard') {
-        dashboardMainContent.classList.remove('hidden');
-        modulesContainer.classList.add('hidden');
-        moduleTabs.classList.remove('hidden');
-        document.querySelector('.tab[data-tab="dashboard"]').classList.add('active');
-        document.querySelector('.nav-item[data-module="dashboard"]').classList.add('active');
-        currentModuleTitle.textContent = 'Dashboard';
+        if (dashboardMainContent) dashboardMainContent.classList.remove('hidden');
+        if (modulesContainer) modulesContainer.classList.add('hidden');
+        if (moduleTabsElement) moduleTabsElement.classList.remove('hidden');
+        const dashboardTab = document.querySelector('.tab[data-tab="dashboard"]');
+        if (dashboardTab) dashboardTab.classList.add('active');
+        const dashboardNavItem = document.querySelector('.nav-item[data-module="dashboard"]');
+        if (dashboardNavItem) dashboardNavItem.classList.add('active');
+        if (currentModuleTitle) currentModuleTitle.textContent = 'Dashboard';
         updateDashboardStats();
     } else {
         const moduleElement = document.getElementById(`${moduleName}Module`);
@@ -1356,7 +1224,7 @@ async function markNotificationRead(id) {
     }
 }
 
-async function markAllAsRead() {
+async function markAllNotificationsAsRead() { // Renamed to match event listener
     notifications.forEach((n) => (n.unread = false));
     renderDropdownNotifications();
     renderModalNotifications();
@@ -1364,49 +1232,54 @@ async function markAllAsRead() {
     await addAuditLog(loggedInUser?.email || 'System', 'Notifications', 'Notifications', 'All notifications marked as read.');
 }
 
+async function showAllNotifications() { // Added function for viewAllNotificationsLink
+    if (notificationDropdown) toggleModal(notificationDropdown, false);
+    if (viewAllModal) toggleModal(viewAllModal, true);
+    renderModalNotifications();
+}
+
+
 if (notificationButton) {
     notificationButton.addEventListener('click', function(event) {
         event.stopPropagation();
-        notificationDropdown.classList.toggle('active');
-        if (userDropdown) userDropdown.classList.remove('active');
+        notificationDropdown.classList.toggle('hidden'); // Use hidden class
+        if (userDropdown) userDropdown.classList.add('hidden'); // Use hidden class
     });
 }
 
 document.addEventListener('click', function(event) {
     if (notificationDropdown && !notificationDropdown.contains(event.target) && (!notificationButton || !notificationButton.contains(event.target))) {
-        notificationDropdown.classList.remove('active');
+        notificationDropdown.classList.add('hidden'); // Use hidden class
     }
 });
 
 if (markAllReadBtn) {
-    markAllReadBtn.addEventListener('click', markAllAsRead);
+    markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
 }
 
 if (viewAllNotificationsLink) {
     viewAllNotificationsLink.addEventListener('click', function(event) {
         event.preventDefault();
-        if (notificationDropdown) notificationDropdown.classList.remove("active");
-        if (viewAllModal) viewAllModal.classList.add("active");
-        renderModalNotifications();
+        showAllNotifications();
     });
 }
 
 if (closeViewAllModal) {
     closeViewAllModal.addEventListener("click", () => {
-        if (viewAllModal) viewAllModal.classList.remove("active");
+        toggleModal(viewAllModal, false); // Use toggleModal
     });
 }
 
 if (viewAllModal) {
     viewAllModal.addEventListener("click", (e) => {
         if (e.target === viewAllModal) {
-            viewAllModal.classList.remove("active");
+            toggleModal(viewAllModal, false); // Use toggleModal
         }
     });
 }
 
 if (modalMarkAllReadBtn) {
-    modalMarkAllReadBtn.addEventListener("click", markAllAsRead);
+    modalMarkAllReadBtn.addEventListener("click", markAllNotificationsAsRead);
 }
 
 // Payroll Module Specific JavaScript
@@ -1455,19 +1328,13 @@ function renderPayrollTable() {
 
 if (openPayrollModalBtn) {
     openPayrollModalBtn.addEventListener('click', () => {
-        if (payrollModal) {
-            payrollModal.classList.remove('hidden');
-            payrollModal.style.display = 'flex';
-        }
+        toggleModal(payrollModal, true); // Use toggleModal
     });
 }
 
 if (closePayrollModalBtn) {
     closePayrollModalBtn.addEventListener('click', () => {
-        if (payrollModal) {
-            payrollModal.classList.add('hidden');
-            payrollModal.style.display = 'none';
-        }
+        toggleModal(payrollModal, false); // Use toggleModal
         if (payrollForm) payrollForm.reset();
     });
 }
@@ -1475,8 +1342,7 @@ if (closePayrollModalBtn) {
 if (payrollModal) {
     payrollModal.addEventListener('click', (e) => {
         if (e.target === payrollModal) {
-            payrollModal.classList.add('hidden');
-            payrollModal.style.display = 'none';
+            toggleModal(payrollModal, false); // Use toggleModal
             if (payrollForm) payrollForm.reset();
         }
     });
@@ -1521,10 +1387,7 @@ if (payrollForm) {
             alert('Payroll processing initiated successfully!');
             await addAuditLog(loggedInUser?.email || 'admin', 'Processed Payroll', 'Payroll', `Processed payroll for ${formattedPeriod}, amount: $${totalAmount}`);
             await fetchPayrollEntries();
-            if (payrollModal) {
-                payrollModal.classList.add('hidden');
-                payrollModal.style.display = 'none';
-            }
+            toggleModal(payrollModal, false); // Use toggleModal
             payrollForm.reset();
         } catch (error) {
             alert('Error processing payroll: ' + error.message);
@@ -1580,19 +1443,13 @@ function renderFinanceTable() {
 
 if (openAddInvoiceModalBtn) {
     openAddInvoiceModalBtn.addEventListener('click', () => {
-        if (addInvoiceModal) {
-            addInvoiceModal.classList.remove('hidden');
-            addInvoiceModal.style.display = 'flex';
-        }
+        toggleModal(addInvoiceModal, true); // Use toggleModal
     });
 }
 
 if (closeAddInvoiceModalBtn) {
     closeAddInvoiceModalBtn.addEventListener('click', () => {
-        if (addInvoiceModal) {
-            addInvoiceModal.classList.add('hidden');
-            addInvoiceModal.style.display = 'none';
-        }
+        toggleModal(addInvoiceModal, false); // Use toggleModal
         if (addInvoiceForm) addInvoiceForm.reset();
     });
 }
@@ -1600,8 +1457,7 @@ if (closeAddInvoiceModalBtn) {
 if (addInvoiceModal) {
     addInvoiceModal.addEventListener('click', (e) => {
         if (e.target === addInvoiceModal) {
-            addInvoiceModal.classList.add('hidden');
-            addInvoiceModal.style.display = 'none';
+            toggleModal(addInvoiceModal, false); // Use toggleModal
             if (addInvoiceForm) addInvoiceForm.reset();
         }
     });
@@ -1643,10 +1499,7 @@ if (addInvoiceForm) {
             alert('Invoice added successfully!');
             await addAuditLog(loggedInUser?.email || 'admin', 'Added Invoice', 'Finance', `Added invoice ${invoiceNumber} for $${invoiceAmount}`);
             await fetchInvoices();
-            if (addInvoiceModal) {
-                addInvoiceModal.classList.add('hidden');
-                addInvoiceModal.style.display = 'none';
-            }
+            toggleModal(addInvoiceModal, false); // Use toggleModal
             addInvoiceForm.reset();
         } catch (error) {
             alert('Error adding invoice: ' + error.message);
@@ -1668,14 +1521,14 @@ async function updateLoggedInUserName() {
 if (userProfileToggle) {
     userProfileToggle.addEventListener('click', function(event) {
         event.stopPropagation();
-        if (userDropdown) userDropdown.classList.toggle('active');
-        if (notificationDropdown) notificationDropdown.classList.remove('active');
+        if (userDropdown) userDropdown.classList.toggle('hidden'); // Use hidden class
+        if (notificationDropdown) notificationDropdown.classList.add('hidden'); // Use hidden class
     });
 }
 
 document.addEventListener('click', function(event) {
     if (userDropdown && !userDropdown.contains(event.target) && (!userProfileToggle || !userProfileToggle.contains(event.target))) {
-        userDropdown.classList.remove('active');
+        userDropdown.classList.add('hidden'); // Use hidden class
     }
 });
 
@@ -1739,7 +1592,7 @@ function filterStudents() {
 }
 
 if (applySearchButton) applySearchButton.addEventListener('click', filterStudents);
-if (searchRollInput) searchRollInput.addEventListener('keyup', filterStudents);
+if (searchRollInput) searchRollInput.addEventListener('input', filterStudents); // Changed to input for live filtering
 if (searchClassSelect) searchClassSelect.addEventListener('change', filterStudents);
 
 // Teacher Render Functionality
@@ -1973,7 +1826,7 @@ function filterAttendance() {
 if (applyAttendanceFilter) applyAttendanceFilter.addEventListener('click', filterAttendance);
 if (attendanceClassFilter) attendanceClassFilter.addEventListener('change', filterAttendance);
 if (attendanceDateFilter) attendanceDateFilter.addEventListener('change', filterAttendance);
-if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('keyup', filterAttendance);
+if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('input', filterAttendance); // Changed to input for live filtering
 
 // Teacher Attendance Module Functions
 function renderTeacherAttendanceTable(filteredRecords = teacherAttendanceRecords) {
@@ -2061,7 +1914,7 @@ function filterTeacherAttendance() {
 if (applyTeacherAttendanceFilter) applyTeacherAttendanceFilter.addEventListener('click', filterTeacherAttendance);
 if (teacherAttendanceSubjectFilter) teacherAttendanceSubjectFilter.addEventListener('change', filterTeacherAttendance);
 if (teacherAttendanceDateFilter) teacherAttendanceDateFilter.addEventListener('change', filterTeacherAttendance);
-if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('keyup', filterTeacherAttendance);
+if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('input', filterTeacherAttendance); // Changed to input for live filtering
 
 window.showAddTeacherAttendanceModal = function() {
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
@@ -2076,11 +1929,9 @@ window.showAddTeacherAttendanceModal = function() {
     document.getElementById('teacherAttendanceId').value = '';
     teacherAttendanceForm.reset();
     populateTeacherSelect();
-    document.getElementById('teacherAttendanceDate').valueAsDate = new Date();
-    if (teacherAttendanceModal) {
-        teacherAttendanceModal.classList.remove('hidden');
-        teacherAttendanceModal.style.display = 'flex';
-    }
+    const today = new Date();
+    document.getElementById('teacherAttendanceDate').value = today.toISOString().split('T')[0]; // Set today's date
+    toggleModal(teacherAttendanceModal, true); // Use toggleModal
 }
 
 window.editTeacherAttendance = function(id) {
@@ -2100,10 +1951,7 @@ window.editTeacherAttendance = function(id) {
         document.getElementById('teacherAttendanceDate').value = record.date;
         document.getElementById('teacherAttendanceStatus').value = record.status;
         document.getElementById('teacherAttendanceRemarks').value = record.remarks;
-        if (teacherAttendanceModal) {
-            teacherAttendanceModal.classList.remove('hidden');
-            teacherAttendanceModal.style.display = 'flex';
-        }
+        toggleModal(teacherAttendanceModal, true); // Use toggleModal
     }
 }
 
@@ -2179,7 +2027,10 @@ function updateDashboardStats() {
 function renderRecentActivity() {
     if (!recentActivityList) return;
     recentActivityList.innerHTML = '';
-    auditLogs.slice(0, 3).forEach(log => {
+    // Sort auditLogs by timestamp in descending order to show most recent first
+    const sortedAuditLogs = [...auditLogs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    sortedAuditLogs.slice(0, 3).forEach(log => {
         const div = document.createElement('div');
         div.className = 'flex items-start space-x-3 animate-slideInFromLeft';
         let iconClass = 'fas fa-info-circle';
@@ -2283,7 +2134,7 @@ window.showAddStudentForm = function() {
     // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
     const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
     // MODIFIED: Allow teachers to add students
-    if (userRole !== 'admin' && userRole !== 'teacher') { 
+    if (userRole !== 'admin' && userRole !== 'teacher') {
         alert('Access Denied: Only admin and teachers can add students.');
         return;
     }
@@ -2291,10 +2142,7 @@ window.showAddStudentForm = function() {
     studentFormSubmitBtn.textContent = 'Add Student';
     document.getElementById('studentId').value = '';
     studentForm.reset();
-    if (studentModal) {
-        studentModal.classList.remove('hidden');
-        studentModal.style.display = 'flex';
-    }
+    toggleModal(studentModal, true); // Use toggleModal
 }
 window.editStudent = function(id) {
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
@@ -2318,10 +2166,7 @@ window.editStudent = function(id) {
         document.getElementById('studentEmail').value = student.email;
         document.getElementById('studentPhone').value = student.phone;
         document.getElementById('studentStatus').value = student.status;
-        if (studentModal) {
-            studentModal.classList.remove('hidden');
-            studentModal.style.display = 'flex';
-        }
+        toggleModal(studentModal, true); // Use toggleModal
     }
 }
 window.deleteStudent = async function(id) {
@@ -2361,10 +2206,7 @@ window.showAddTeacherForm = function() {
     teacherFormSubmitBtn.textContent = 'Add Teacher';
     document.getElementById('teacherId').value = '';
     teacherForm.reset();
-    if (teacherModal) {
-        teacherModal.classList.remove('hidden');
-        teacherModal.style.display = 'flex';
-    }
+    toggleModal(teacherModal, true); // Use toggleModal
 }
 window.editTeacher = function(id) {
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
@@ -2383,10 +2225,7 @@ window.editTeacher = function(id) {
         document.getElementById('teacherSubject').value = teacher.subject;
         document.getElementById('teacherEmail').value = teacher.email;
         document.getElementById('teacherClasses').value = teacher.classes;
-        if (teacherModal) {
-            teacherModal.classList.remove('hidden');
-            teacherModal.style.display = 'flex';
-        }
+        toggleModal(teacherModal, true); // Use toggleModal
     }
 }
 window.deleteTeacher = async function(id) {
@@ -2427,10 +2266,7 @@ window.showAddUserForm = function() {
     document.getElementById('userId').value = '';
     userForm.reset();
     document.getElementById('userPassword').required = true;
-    if (userModal) {
-        userModal.classList.remove('hidden');
-        userModal.style.display = 'flex';
-    }
+    toggleModal(userModal, true); // Use toggleModal
 }
 window.editUser = async function(id) {
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
@@ -2460,10 +2296,7 @@ window.editUser = async function(id) {
         document.getElementById('userStatus').value = '';
     }
 
-    if (userModal) {
-        userModal.classList.remove('hidden');
-        userModal.style.display = 'flex';
-    }
+    toggleModal(userModal, true); // Use toggleModal
 }
 window.deleteUser = async function(id) {
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
@@ -2491,10 +2324,7 @@ window.showAddAnnouncementModal = function() {
     announcementFormSubmitBtn.textContent = 'Publish Announcement';
     document.getElementById('announcementId').value = '';
     announcementForm.reset();
-    if (announcementModal) {
-        announcementModal.classList.remove('hidden');
-        announcementModal.style.display = 'flex';
-    }
+    toggleModal(announcementModal, true); // Use toggleModal
 }
 window.editAnnouncement = function(id) {
     const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
@@ -2512,10 +2342,7 @@ window.editAnnouncement = function(id) {
         document.getElementById('announcementTitle').value = announcement.title;
         document.getElementById('announcementContent').value = announcement.content;
         document.getElementById('announcementStatus').value = announcement.status;
-        if (announcementModal) {
-            announcementModal.classList.remove('hidden');
-            announcementModal.style.display = 'flex';
-        }
+        toggleModal(announcementModal, true); // Use toggleModal
     }
 }
 window.deleteAnnouncement = async function(id) {
@@ -2557,11 +2384,9 @@ window.showAddAttendanceModal = function() {
     document.getElementById('attendanceId').value = '';
     attendanceForm.reset();
     populateStudentSelect();
-    document.getElementById('attendanceDate').valueAsDate = new Date();
-    if (attendanceModal) {
-        attendanceModal.classList.remove('hidden');
-        attendanceModal.style.display = 'flex';
-    }
+    const today = new Date();
+    document.getElementById('attendanceDate').value = today.toISOString().split('T')[0]; // Set today's date
+    toggleModal(attendanceModal, true); // Use toggleModal
 }
 
 window.editAttendance = function(id) {
@@ -2581,10 +2406,7 @@ window.editAttendance = function(id) {
         document.getElementById('attendanceDate').value = record.date;
         document.getElementById('attendanceStatus').value = record.status;
         document.getElementById('attendanceRemarks').value = record.remarks;
-        if (attendanceModal) {
-            attendanceModal.classList.remove('hidden');
-            attendanceModal.style.display = 'flex';
-        }
+        toggleModal(attendanceModal, true); // Use toggleModal
     }
 }
 
@@ -2629,20 +2451,20 @@ function populateStudentSelect(selectedStudentId = '') {
 }
 
 // Close modal event listeners
-if (closeStudentModal) closeStudentModal.addEventListener('click', function() { if (studentModal) { studentModal.classList.add('hidden'); studentModal.style.display = 'none'; } studentForm.reset(); });
-if (closeTeacherModal) closeTeacherModal.addEventListener('click', function() { if (teacherModal) { teacherModal.classList.add('hidden'); teacherModal.style.display = 'none'; } teacherForm.reset(); });
-if (closeUserModal) closeUserModal.addEventListener('click', function() { if (userModal) { userModal.classList.add('hidden'); userModal.style.display = 'none'; } userForm.reset(); });
-if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', function() { if (announcementModal) { announcementModal.classList.add('hidden'); announcementModal.style.display = 'none'; } announcementForm.reset(); });
-if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', function() { if (attendanceModal) { attendanceModal.classList.add('hidden'); attendanceModal.style.display = 'none'; } attendanceForm.reset(); });
-if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', function() { if (teacherAttendanceModal) { teacherAttendanceModal.classList.add('hidden'); teacherAttendanceModal.style.display = 'none'; } teacherAttendanceForm.reset(); });
+if (closeStudentModal) closeStudentModal.addEventListener('click', function() { toggleModal(studentModal, false); studentForm.reset(); });
+if (closeTeacherModal) closeTeacherModal.addEventListener('click', function() { toggleModal(teacherModal, false); teacherForm.reset(); });
+if (closeUserModal) closeUserModal.addEventListener('click', function() { toggleModal(userModal, false); userForm.reset(); });
+if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', function() { toggleModal(announcementModal, false); announcementForm.reset(); });
+if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', function() { toggleModal(attendanceModal, false); attendanceForm.reset(); });
+if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', function() { toggleModal(teacherAttendanceModal, false); teacherAttendanceForm.reset(); });
 
 // Close modal on outside click event listeners
-if (studentModal) studentModal.addEventListener('click', (e) => { if (e.target === studentModal) { studentModal.classList.add('hidden'); studentModal.style.display = 'none'; studentForm.reset(); } });
-if (teacherModal) teacherModal.addEventListener('click', (e) => { if (e.target === teacherModal) { teacherModal.classList.add('hidden'); teacherModal.style.display = 'none'; teacherForm.reset(); } });
-if (userModal) userModal.addEventListener('click', (e) => { if (e.target === userModal) { userModal.classList.add('hidden'); userModal.style.display = 'none'; userForm.reset(); } });
-if (announcementModal) announcementModal.addEventListener('click', (e) => { if (e.target === announcementModal) { announcementModal.classList.add('hidden'); announcementModal.style.display = 'none'; announcementForm.reset(); } });
-if (attendanceModal) attendanceModal.addEventListener('click', (e) => { if (e.target === attendanceModal) { attendanceModal.classList.add('hidden'); attendanceModal.style.display = 'none'; attendanceForm.reset(); } });
-if (teacherAttendanceModal) teacherAttendanceModal.addEventListener('click', (e) => { if (e.target === teacherAttendanceModal) { teacherAttendanceModal.classList.add('hidden'); teacherAttendanceModal.style.display = 'none'; teacherAttendanceForm.reset(); } });
+if (studentModal) studentModal.addEventListener('click', (e) => { if (e.target === studentModal) { toggleModal(studentModal, false); studentForm.reset(); } });
+if (teacherModal) teacherModal.addEventListener('click', (e) => { if (e.target === teacherModal) { toggleModal(teacherModal, false); teacherForm.reset(); } });
+if (userModal) userModal.addEventListener('click', (e) => { if (e.target === userModal) { toggleModal(userModal, false); userForm.reset(); } });
+if (announcementModal) announcementModal.addEventListener('click', (e) => { if (e.target === announcementModal) { toggleModal(announcementModal, false); announcementForm.reset(); } });
+if (attendanceModal) attendanceModal.addEventListener('click', (e) => { if (e.target === attendanceModal) { toggleModal(attendanceModal, false); attendanceForm.reset(); } });
+if (teacherAttendanceModal) teacherAttendanceModal.addEventListener('click', (e) => { if (e.target === teacherAttendanceModal) { toggleModal(teacherAttendanceModal, false); teacherAttendanceForm.reset(); } });
 
 // Add/Edit Student Form Submission
 if (studentForm) {
@@ -2652,7 +2474,7 @@ if (studentForm) {
         // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
         const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
         // MODIFIED: Allow teachers to manage student data
-        if (userRole !== 'admin' && userRole !== 'teacher') { 
+        if (userRole !== 'admin' && userRole !== 'teacher') {
             alert('Access Denied: Only admin and teachers can manage student data.');
             return;
         }
@@ -2710,10 +2532,7 @@ if (studentForm) {
         if (operationSuccess) {
             await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Students', auditDetails);
             await fetchStudents();
-            if (studentModal) {
-                studentModal.classList.add('hidden');
-                studentModal.style.display = 'none';
-            }
+            toggleModal(studentModal, false); // Use toggleModal
             form.reset();
         }
     });
@@ -2774,10 +2593,7 @@ if (teacherForm) {
         if (operationSuccess) {
             await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Teachers', auditDetails);
             await fetchTeachers();
-            if (teacherModal) {
-                teacherModal.classList.add('hidden');
-                teacherModal.style.display = 'none';
-            }
+            toggleModal(teacherModal, false); // Use toggleModal
             form.reset();
         }
     });
@@ -2837,10 +2653,10 @@ if (userForm) {
 
                     const { data, error } = await supabase.auth.updateUser(
                         { data: { role: role } }, // Only updating role here as per request
-                        { 
+                        {
                             // Use service role key for admin updates
-                            headers: { 
-                                'Authorization': `Bearer ${SERVICE_ROLE_KEY}` 
+                            headers: {
+                                'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
                             }
                         }
                     );
@@ -2865,10 +2681,7 @@ if (userForm) {
 
         if (operationSuccess) {
             await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'User Management', auditDetails);
-            if (userModal) {
-                userModal.classList.add('hidden');
-                userModal.style.display = 'none';
-            }
+            toggleModal(userModal, false); // Use toggleModal
             form.reset();
         }
     });
@@ -2929,10 +2742,7 @@ if (announcementForm) {
         if (operationSuccess) {
             await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Announcements', auditDetails);
             await fetchAnnouncements();
-            if (announcementModal) {
-                announcementModal.classList.add('hidden');
-                announcementModal.style.display = 'none';
-            }
+            toggleModal(announcementModal, false); // Use toggleModal
             form.reset();
         }
     });
@@ -3004,10 +2814,7 @@ if (attendanceForm) {
         if (operationSuccess) {
             await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Attendance', auditDetails);
             await fetchAttendanceRecords();
-            if (attendanceModal) {
-                attendanceModal.classList.add('hidden');
-                attendanceModal.style.display = 'none';
-            }
+            toggleModal(attendanceModal, false); // Use toggleModal
             form.reset();
         }
     });
@@ -3079,10 +2886,7 @@ if (teacherAttendanceForm) {
         if (operationSuccess) {
             await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Teacher Attendance', auditDetails);
             await fetchTeacherAttendanceRecords();
-            if (teacherAttendanceModal) {
-                teacherAttendanceModal.classList.add('hidden');
-                teacherAttendanceModal.style.display = 'none';
-            }
+            toggleModal(teacherAttendanceModal, false); // Use toggleModal
             form.reset();
         }
     });
@@ -3208,8 +3012,8 @@ if (verifyStudentFingerprintBtn) {
             });
 
             alert(`Fingerprint verified successfully for ${student.name}! Attendance marked as Present.`);
-            document.getElementById('attendanceStatus').value = 'Present';
-            document.getElementById('attendanceFormSubmitBtn').click(); // Automatically submit attendance
+            if (attendanceStatusSelect) attendanceStatusSelect.value = 'Present';
+            if (attendanceFormSubmitBtn) attendanceFormSubmitBtn.click(); // Automatically submit attendance
             await addAuditLog(loggedInUser?.email || 'System', 'Verified Fingerprint', 'Attendance', `Verified fingerprint for student: ${student.name} (ID: ${student.id}) - Marked Present`);
         } catch (error) {
             console.error("Fingerprint verification failed:", error);
@@ -3336,8 +3140,8 @@ if (verifyTeacherFingerprintBtn) {
             });
 
             alert(`Fingerprint verified successfully for ${teacher.name}! Attendance marked as Present.`);
-            document.getElementById('teacherAttendanceStatus').value = 'Present';
-            document.getElementById('teacherAttendanceFormSubmitBtn').click(); // Automatically submit attendance
+            if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = 'Present';
+            if (teacherAttendanceFormSubmitBtn) teacherAttendanceFormSubmitBtn.click(); // Automatically submit attendance
             await addAuditLog(loggedInUser?.email || 'System', 'Verified Fingerprint', 'Teacher Attendance', `Verified fingerprint for teacher: ${teacher.name} (ID: ${teacher.id})`);
         } catch (error) {
             console.error("Fingerprint verification failed:", error);
@@ -3523,23 +3327,7 @@ window.exportTeacherAttendanceToExcel = function() {
 }
 
 // Dark Mode Toggle
-if (darkModeToggle) {
-    darkModeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        if (document.body.classList.contains('dark-mode')) {
-            localStorage.setItem('theme', 'dark');
-            darkModeIcon.classList.remove('fa-moon');
-            darkModeIcon.classList.add('fa-sun');
-        } else {
-            localStorage.setItem('theme', 'light');
-            darkModeIcon.classList.remove('fa-sun');
-            darkModeIcon.classList.add('fa-moon');
-        }
-    });
-}
-
-// Apply saved theme on load
-document.addEventListener('DOMContentLoaded', () => {
+function applyTheme() {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
         document.body.classList.add('dark-mode');
@@ -3554,6 +3342,268 @@ document.addEventListener('DOMContentLoaded', () => {
             darkModeIcon.classList.add('fa-moon');
         }
     }
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    if (document.body.classList.contains('dark-mode')) {
+        localStorage.setItem('theme', 'dark');
+        if (darkModeIcon) {
+            darkModeIcon.classList.remove('fa-moon');
+            darkModeIcon.classList.add('fa-sun');
+        }
+    } else {
+        localStorage.setItem('theme', 'light');
+        if (darkModeIcon) {
+            darkModeIcon.classList.remove('fa-sun');
+            darkModeIcon.classList.add('fa-moon');
+        }
+    }
+}
+
+if (darkModeToggle) {
+    darkModeToggle.addEventListener('click', toggleDarkMode);
+}
+
+// Apply saved theme on load
+document.addEventListener('DOMContentLoaded', () => {
+    applyTheme();
+
+    // Initial event listeners that were outside DOMContentLoaded in original, but should be inside
+    // to ensure elements are loaded.
+    // This block was moved from the top-level execution to here.
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
+    if (forgotPasswordLink) forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleModal(forgotPasswordModal, true);
+    });
+    if (closeForgotPasswordModal) closeForgotPasswordModal.addEventListener('click', () => toggleModal(forgotPasswordModal, false));
+    if (forgotPasswordForm) forgotPasswordForm.addEventListener('submit', handleForgotPassword);
+
+    roleButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            roleButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            selectedRoleInput.value = button.dataset.role;
+        });
+    });
+
+    if (navItems) { // Check if navItems is defined
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const module = item.dataset.module;
+                showModule(module);
+            });
+        });
+    }
+
+    if (moduleTabs) { // Check if moduleTabs is defined
+        moduleTabs.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab')) {
+                const module = e.target.dataset.tab;
+                showModule(module);
+            }
+        });
+    }
+
+    document.querySelectorAll('.open-module').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const module = e.target.dataset.module;
+            showModule(module);
+        });
+    });
+
+    if (userProfileToggle) userProfileToggle.addEventListener('click', () => {
+        if (userDropdown) userDropdown.classList.toggle('hidden');
+    });
+
+    if (logoutButton) logoutButton.addEventListener('click', handleLogout);
+
+    document.addEventListener('click', (event) => {
+        if (userProfileToggle && userDropdown && !userProfileToggle.contains(event.target) && !userDropdown.contains(event.target)) {
+            userDropdown.classList.add('hidden');
+        }
+        if (notificationButton && notificationDropdown && viewAllModal && !notificationButton.contains(event.target) && !notificationDropdown.contains(event.target) && !viewAllModal.contains(event.target)) {
+            notificationDropdown.classList.add('hidden');
+        }
+    });
+
+    if (notificationButton) notificationButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (notificationDropdown) notificationDropdown.classList.toggle('hidden');
+    });
+    if (markAllReadBtn) markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+    if (viewAllNotificationsLink) viewAllNotificationsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        showAllNotifications();
+        if (notificationDropdown) toggleModal(notificationDropdown, false);
+    });
+    if (closeViewAllModal) closeViewAllModal.addEventListener('click', () => toggleModal(viewAllModal, false));
+    if (modalMarkAllReadBtn) modalMarkAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+
+    if (darkModeToggle) darkModeToggle.addEventListener('click', toggleDarkMode);
+
+    // Modal close buttons
+    if (closeUserModal) closeUserModal.addEventListener('click', () => toggleModal(userModal, false));
+    if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', () => toggleModal(announcementModal, false));
+    if (closeStudentModal) closeStudentModal.addEventListener('click', () => toggleModal(studentModal, false));
+    if (closeTeacherModal) closeTeacherModal.addEventListener('click', () => toggleModal(teacherModal, false));
+    if (closePayrollModalBtn) closePayrollModalBtn.addEventListener('click', () => toggleModal(payrollModal, false));
+    if (closeAddInvoiceModalBtn) closeAddInvoiceModalBtn.addEventListener('click', () => toggleModal(addInvoiceModal, false));
+    if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', () => toggleModal(attendanceModal, false));
+    if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', () => toggleModal(teacherAttendanceModal, false));
+
+    // Student Module Specific Listeners
+    if (applySearchButton) applySearchButton.addEventListener('click', filterStudents);
+    if (searchRollInput) searchRollInput.addEventListener('input', filterStudents);
+    if (searchClassSelect) searchClassSelect.addEventListener('change', filterStudents);
+
+    // Attendance Module Specific Listeners
+    if (applyAttendanceFilter) applyAttendanceFilter.addEventListener('click', filterStudentAttendance);
+    if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('input', filterStudentAttendance);
+    if (attendanceClassFilter) attendanceClassFilter.addEventListener('change', filterStudentAttendance);
+    if (attendanceDateFilter) attendanceDateFilter.addEventListener('change', filterStudentAttendance);
+    if (registerStudentFingerprintBtn) registerStudentFingerprintBtn.addEventListener('click', () => {
+        showToast('Student fingerprint registration initiated (simulated).', 'info');
+    });
+    if (verifyStudentFingerprintBtn) verifyStudentFingerprintBtn.addEventListener('click', () => {
+        showToast('Student fingerprint verification initiated (simulated). Marking present if successful.', 'info');
+        if (attendanceStatusSelect) attendanceStatusSelect.value = 'Present';
+        showToast('Student marked Present via fingerprint (simulated).', 'success');
+    });
+
+    // Teacher Attendance Module Specific Listeners
+    if (applyTeacherAttendanceFilter) applyTeacherAttendanceFilter.addEventListener('click', filterTeacherAttendance);
+    if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('input', filterTeacherAttendance);
+    if (teacherAttendanceSubjectFilter) teacherAttendanceSubjectFilter.addEventListener('change', filterTeacherAttendance);
+    if (teacherAttendanceDateFilter) teacherAttendanceDateFilter.addEventListener('change', filterTeacherAttendance);
+    if (registerTeacherFingerprintBtn) registerTeacherFingerprintBtn.addEventListener('click', () => {
+        showToast('Teacher fingerprint registration initiated (simulated).', 'info');
+    });
+    if (verifyTeacherFingerprintBtn) verifyTeacherFingerprintBtn.addEventListener('click', () => {
+        showToast('Teacher fingerprint verification initiated (simulated). Marking present if successful.', 'info');
+        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = 'Present';
+        showToast('Teacher marked Present via fingerprint (simulated).', 'success');
+    });
+
+    // Forms
+    // Assuming these handlers are defined elsewhere or are placeholders
+    const profileFormSubmitHandler = () => console.log('Profile form submitted');
+    const profilePictureChangeHandler = () => console.log('Profile picture changed');
+    const userFormSubmitHandler = () => console.log('User form submitted');
+    const announcementFormSubmitHandler = () => console.log('Announcement form submitted');
+    const studentFormSubmitHandler = () => console.log('Student form submitted');
+    const teacherFormSubmitHandler = () => console.log('Teacher form submitted');
+    const payrollFormSubmitHandler = () => console.log('Payroll form submitted');
+    const addInvoiceFormSubmitHandler = () => console.log('Add Invoice form submitted');
+    const attendanceFormSubmitHandler = () => console.log('Attendance form submitted');
+    const teacherAttendanceFormSubmitHandler = () => console.log('Teacher Attendance form submitted');
+
+
+    if (profileForm) profileForm.addEventListener('submit', profileFormSubmitHandler);
+    if (profilePictureInput) profilePictureInput.addEventListener('change', profilePictureChangeHandler);
+    if (userForm) userForm.addEventListener('submit', userFormSubmitHandler);
+    if (announcementForm) announcementForm.addEventListener('submit', announcementFormSubmitHandler);
+    if (studentForm) studentForm.addEventListener('submit', studentFormSubmitHandler);
+    if (teacherForm) teacherForm.addEventListener('submit', teacherFormSubmitHandler);
+    if (payrollForm) payrollForm.addEventListener('submit', payrollFormSubmitHandler);
+    if (addInvoiceForm) addInvoiceForm.addEventListener('submit', addInvoiceFormSubmitHandler);
+    if (attendanceForm) attendanceForm.addEventListener('submit', attendanceFormSubmitHandler);
+    if (teacherAttendanceForm) teacherAttendanceForm.addEventListener('submit', teacherAttendanceFormSubmitHandler);
+
+
+    // --- Initial Load ---
+    console.log('DOMContentLoaded fired.'); // DEBUG
+    applyTheme();
+    await loadNotifications(); // Load notifications from Supabase
+
+    // Check Supabase session initially
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('Initial Supabase session check. Session:', session, 'Error:', error); // DEBUG
+
+    if (session) {
+        // User is logged in via Supabase Auth
+        const userEmail = session.user?.email; // Safely access email
+        const userData = await fetchUserData(userEmail); // Using the new function
+
+        if (!userData) {
+            console.error('Error fetching user data from public.profiles: User data not found or inconsistent. Forcing logout.');
+            showToast('Failed to retrieve user role. Please log in again.', 'error');
+            await supabase.auth.signOut(); // Force logout if user data is inconsistent
+            renderLoginUi();
+            return;
+        }
+
+        localStorage.setItem('loggedInUserRole', userData.role);
+        localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+        console.log('Session found on DOMContentLoaded. Calling renderSchoolSite().'); // DEBUG
+        showSchoolSiteUi(); // Changed from renderSchoolSite() to showSchoolSiteUi()
+    } else {
+        // No active session, show login UI
+        console.log('No session found on DOMContentLoaded. Calling renderLoginUi().'); // DEBUG
+        showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
+    }
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN') {
+            // Explicitly fetch user profile
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session?.user.id)
+                .single();
+
+            if (profileError && profileError.code === 'PGRST116') { // No rows found
+                console.warn('No profile found for new user, creating one.');
+                // Create a profile for the newly signed-up user
+                await supabase
+                    .from('profiles')
+                    .upsert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        full_name: session.user.email.split('@')[0], // Default full name
+                        role: 'student', // Default role for new sign-ups
+                        status: 'Active'
+                    });
+            } else if (profileError) {
+                console.error('Profile fetch error on auth state change:', profileError);
+                showToast('Error fetching user profile. Please try again.', 'error');
+                await supabase.auth.signOut();
+                showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
+                return;
+            }
+
+            // After handling profile, proceed with rendering the site
+            const userEmail = session.user.email;
+            const userData = await fetchUserData(userEmail);
+
+            if (!userData) {
+                console.error('Error fetching user data on auth state change: User data not found. Forcing logout.');
+                showToast('Failed to retrieve user role. Please log in again.', 'error');
+                await supabase.auth.signOut();
+                showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
+                return;
+            }
+            localStorage.setItem('loggedInUserRole', userData.role);
+            localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+            showSchoolSiteUi(); // Changed from renderSchoolSite() to showSchoolSiteUi()
+
+            // Added code: Fetch user data by ID and log it (for debugging)
+            const userId = session.user.id;
+            const { data, error: fetchError } = await supabase
+                .from('profiles') // Changed from 'users' to 'profiles'
+                .select('*')
+                .eq('id', userId);
+            console.log('User data from public.profiles table on auth state change (for debugging):', data);
+        } else if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('loggedInUserRole');
+            localStorage.removeItem('loggedInUserName');
+            showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
+        }
+    });
 });
 
 // FIX: Added placeholder for startVoiceAssistant to resolve ReferenceError from index.html
