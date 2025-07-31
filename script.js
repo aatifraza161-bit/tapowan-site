@@ -1,34 +1,659 @@
-// Global variables for data (will be populated from Supabase)
+// Merged and Fixed script.js
+
+// --- Global Variables ---
+
+let notifications = [];
+let users = []; // This will now refer to 'profiles' data
+let announcements = [];
 let students = [];
 let teachers = [];
 let payrollEntries = [];
 let invoices = [];
-let announcements = [];
-let notifications = []; // Client-side for simplicity
-let auditLogs = [];
-let backups = []; // Client-side for simplicity
-let attendanceRecords = [];
+let studentAttendanceRecords = [];
 let teacherAttendanceRecords = [];
-let profiles = []; // New global variable for profiles
+let schoolEvents = [];
+let holidays = []; // Static holiday data from script1.js
+let auditLogs = []; // From script1.js
+let backups = []; // Simulated backups from script1.js
+let profiles = []; // New global variable for profiles, from script1.js
 
 // Supabase Client Initialization (Replace with your actual keys)
 const SUPABASE_URL = 'https://wjmvgdaoehgymnhzqeuv.supabase.co'; // Replace with your Supabase URL
-// IMPORTANT: Replace this with your actual Supabase Anon Key. The one provided was malformed.
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqbXZnZGFvZWhneW1uaHpxZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4NzM2ODgsImV4cCI6MjA2OTQ0OTY4OH0.NnrLIIu3e8DrkjcKtexZs50kV0kPYH25Oz7dc_lsiDA'; // Replace with your actual Supabase Anon Key
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Chart.js instances (from script1.js)
+let attendanceChartInstance = null;
+let performanceChartInstance = null;
+
+// FullCalendar instance
+let calendar;
+
+// --- DOM Element References ---
+let loginUi, schoolSiteUi, loginForm, emailInput, passwordInput, selectedRoleInput, roleButtons,
+    forgotPasswordLink, forgotPasswordModal, closeForgotPasswordModal, forgotPasswordForm, forgotEmailInput, typedWelcome,
+    navItems, moduleTabs, modulesContainer, currentModuleTitle, loggedInUserName, userProfileToggle, userDropdown, logoutButton,
+    notificationButton, notificationCount, notificationDropdown, notificationList, newCount, markAllReadBtn,
+    viewAllNotificationsLink, viewAllModal, closeViewAllModal, viewAllNotificationList, modalMarkAllReadBtn,
+    darkModeToggle, totalStudentsCount, totalTeachersCount, monthlyRevenue, upcomingEventsCount, recentActivityList,
+    profileModule, profileForm, profilePictureInput, profilePicturePreview, fullNameInput, profileEmailInput, roleSelect, phoneInput, addressTextarea,
+    userManagementModule, userTableBody, userModal, userModalTitle, closeUserModal, userForm, userIdInput, userFullNameInput, userEmailInput, userRoleSelect, userPasswordInput, userStatusSelect, userFormSubmitBtn,
+    announcementsModule, announcementTableBody, announcementModal, announcementModalTitle, closeAnnouncementModal, announcementForm, announcementIdInput, announcementTitleInput, announcementContentTextarea, announcementStatusSelect, announcementFormSubmitBtn,
+    studentsModule, studentTableBody, studentModal, studentModalTitle, closeStudentModal, studentForm, studentIdInput, studentFullNameInput, studentFatherNameInput, studentMotherNameInput, studentClassSelect, studentRollNoInput, studentAadharNoInput, studentEmailInput, studentPhoneInput, studentStatusSelect, studentFormSubmitBtn, searchRollInput, searchClassSelect, applySearchButton,
+    teachersModule, teacherTableBody, teacherModal, teacherModalTitle, closeTeacherModal, teacherForm, teacherIdInput, teacherFullNameInput, teacherSubjectSelect, teacherEmailInput, teacherClassesInput, teacherFormSubmitBtn,
+    payrollModule, payrollTableBody, openPayrollModalBtn, payrollModal, closePayrollModalBtn, payrollForm, payrollPeriodInput, staffCountInput, totalAmountInput,
+    financeModule, financeTableBody, openAddInvoiceModalBtn, addInvoiceModal, closeAddInvoiceModalBtn, addInvoiceForm, invoiceNumberInput, invoiceDateInput, invoiceAmountInput, invoiceStatusSelect,
+    attendanceModule, attendanceTableBody, attendanceModal, attendanceModalTitle, closeAttendanceModal, attendanceForm, attendanceIdInput, attendanceStudentSelect, attendanceDateInput, attendanceStatusSelect, attendanceRemarksTextarea, attendanceFormSubmitBtn, attendanceStudentNameFilter, attendanceClassFilter, attendanceDateFilter, applyAttendanceFilter, attendanceTotalStudents, attendanceTotalPresent, attendanceTotalAbsent, registerStudentFingerprintBtn, verifyStudentFingerprintBtn,
+    teacherAttendanceModule, teacherAttendanceTableBody, teacherAttendanceModal, teacherAttendanceModalTitle, closeTeacherAttendanceModal, teacherAttendanceForm, teacherAttendanceIdInput, teacherAttendanceTeacherSelect, teacherAttendanceDateInput, teacherAttendanceStatusSelect, teacherAttendanceRemarksTextarea, teacherAttendanceFormSubmitBtn, teacherAttendanceNameFilter, teacherAttendanceSubjectFilter, teacherAttendanceDateFilter, applyTeacherAttendanceFilter, teacherAttendanceTotalTeachers, teacherAttendanceTotalPresent, teacherAttendanceTotalAbsent, registerTeacherFingerprintBtn, verifyTeacherFingerprintBtn,
+    calendarModule, fullCalendarEl, holidayListContainer, reportsModule; // Renamed holidayList to holidayListContainer to avoid conflict with global holidays array
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize DOM element references
+    loginUi = document.getElementById('login-ui');
+    schoolSiteUi = document.getElementById('school-site-ui');
+    loginForm = document.getElementById('loginForm');
+    emailInput = document.getElementById('email');
+    passwordInput = document.getElementById('password');
+    selectedRoleInput = document.getElementById('selectedRole');
+    roleButtons = document.querySelectorAll('.role-button');
+    forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    forgotPasswordModal = document.getElementById('forgotPasswordModal');
+    closeForgotPasswordModal = document.getElementById('closeForgotPasswordModal');
+    forgotPasswordForm = document.getElementById('forgotPasswordForm');
+    forgotEmailInput = document.getElementById('forgotEmail');
+    typedWelcome = document.getElementById('typed-welcome');
+
+    navItems = document.querySelectorAll('.nav-item');
+    moduleTabs = document.getElementById('moduleTabs');
+    modulesContainer = document.getElementById('modulesContainer');
+    currentModuleTitle = document.getElementById('currentModuleTitle');
+    loggedInUserName = document.getElementById('loggedInUserName');
+    userProfileToggle = document.getElementById('userProfileToggle');
+    userDropdown = document.getElementById('userDropdown');
+    logoutButton = document.getElementById('logoutButton');
+
+    notificationButton = document.getElementById('notificationButton');
+    notificationCount = document.getElementById('notificationCount');
+    notificationDropdown = document.getElementById('notificationDropdown');
+    notificationList = document.getElementById('notificationList');
+    newCount = document.getElementById('newCount');
+    markAllReadBtn = document.getElementById('markAllReadBtn');
+    viewAllNotificationsLink = document.getElementById('viewAllNotificationsLink');
+    viewAllModal = document.getElementById('viewAllModal');
+    closeViewAllModal = document.getElementById('closeViewAllModal');
+    viewAllNotificationList = document.getElementById('viewAllNotificationList');
+    modalMarkAllReadBtn = document.getElementById('modalMarkAllReadBtn');
+
+    darkModeToggle = document.getElementById('darkModeToggle');
+
+    // Dashboard Stats
+    totalStudentsCount = document.getElementById('totalStudentsCount');
+    totalTeachersCount = document.getElementById('totalTeachersCount');
+    monthlyRevenue = document.getElementById('monthlyRevenue');
+    upcomingEventsCount = document.getElementById('upcomingEventsCount');
+    recentActivityList = document.getElementById('recentActivityList');
+
+    // Profile Module
+    profileModule = document.getElementById('profileModule');
+    profileForm = document.getElementById('profileForm');
+    profilePictureInput = document.getElementById('profilePicture');
+    profilePicturePreview = document.getElementById('profilePicturePreview');
+    fullNameInput = document.getElementById('fullName');
+    profileEmailInput = document.getElementById('email'); // Note: This might conflict with login emailInput if not careful
+    roleSelect = document.getElementById('role');
+    phoneInput = document.getElementById('phone');
+    addressTextarea = document.getElementById('address');
+
+    // User Management Module
+    userManagementModule = document.getElementById('user-managementModule');
+    userTableBody = document.getElementById('userTableBody');
+    userModal = document.getElementById('userModal');
+    userModalTitle = document.getElementById('userModalTitle');
+    closeUserModal = document.getElementById('closeUserModal');
+    userForm = document.getElementById('userForm');
+    userIdInput = document.getElementById('userId');
+    userFullNameInput = document.getElementById('userFullName');
+    userEmailInput = document.getElementById('userEmail');
+    userRoleSelect = document.getElementById('userRole');
+    userPasswordInput = document.getElementById('userPassword');
+    userStatusSelect = document.getElementById('userStatus');
+    userFormSubmitBtn = document.getElementById('userFormSubmitBtn');
+
+    // Announcements Module
+    announcementsModule = document.getElementById('announcementsModule');
+    announcementTableBody = document.getElementById('announcementTableBody');
+    announcementModal = document.getElementById('announcementModal');
+    announcementModalTitle = document.getElementById('announcementModalTitle');
+    closeAnnouncementModal = document.getElementById('closeAnnouncementModal');
+    announcementForm = document.getElementById('announcementForm');
+    announcementIdInput = document.getElementById('announcementId');
+    announcementTitleInput = document.getElementById('announcementTitle');
+    announcementContentTextarea = document.getElementById('announcementContent');
+    announcementStatusSelect = document.getElementById('announcementStatus');
+    announcementFormSubmitBtn = document.getElementById('announcementFormSubmitBtn');
+
+    // Students Module
+    studentsModule = document.getElementById('studentsModule');
+    studentTableBody = document.getElementById('studentTableBody');
+    studentModal = document.getElementById('studentModal');
+    studentModalTitle = document.getElementById('studentModalTitle');
+    closeStudentModal = document.getElementById('closeStudentModal');
+    studentForm = document.getElementById('studentForm');
+    studentIdInput = document.getElementById('studentId');
+    studentFullNameInput = document.getElementById('studentFullName');
+    studentFatherNameInput = document.getElementById('studentFatherName');
+    studentMotherNameInput = document.getElementById('studentMotherName');
+    studentClassSelect = document.getElementById('studentClass');
+    studentRollNoInput = document.getElementById('studentRollNo');
+    studentAadharNoInput = document.getElementById('studentAadharNo');
+    studentEmailInput = document.getElementById('studentEmail');
+    studentPhoneInput = document.getElementById('studentPhone');
+    studentStatusSelect = document.getElementById('studentStatus');
+    studentFormSubmitBtn = document.getElementById('studentFormSubmitBtn');
+    searchRollInput = document.getElementById('searchRoll');
+    searchClassSelect = document.getElementById('searchClass');
+    applySearchButton = document.getElementById('applySearch');
+
+    // Teachers Module
+    teachersModule = document.getElementById('teachersModule');
+    teacherTableBody = document.getElementById('teacherTableBody');
+    teacherModal = document.getElementById('teacherModal');
+    teacherModalTitle = document.getElementById('teacherModalTitle');
+    closeTeacherModal = document.getElementById('closeTeacherModal');
+    teacherForm = document.getElementById('teacherForm');
+    teacherIdInput = document.getElementById('teacherId');
+    teacherFullNameInput = document.getElementById('teacherFullName');
+    teacherSubjectSelect = document.getElementById('teacherSubject');
+    teacherEmailInput = document.getElementById('teacherEmail');
+    teacherClassesInput = document.getElementById('teacherClasses');
+    teacherFormSubmitBtn = document.getElementById('teacherFormSubmitBtn');
+
+    // Payroll Module
+    payrollModule = document.getElementById('payrollModule');
+    payrollTableBody = document.getElementById('payrollTableBody');
+    openPayrollModalBtn = document.getElementById('openPayrollModalBtn');
+    payrollModal = document.getElementById('payrollModal');
+    closePayrollModalBtn = document.getElementById('closePayrollModalBtn');
+    payrollForm = document.getElementById('payrollForm');
+    payrollPeriodInput = document.getElementById('payrollPeriod');
+    staffCountInput = document.getElementById('staffCount');
+    totalAmountInput = document.getElementById('totalAmount');
+
+    // Finance Module
+    financeModule = document.getElementById('financeModule');
+    financeTableBody = document.getElementById('financeTableBody');
+    openAddInvoiceModalBtn = document.getElementById('openAddInvoiceModalBtn');
+    addInvoiceModal = document.getElementById('addInvoiceModal');
+    closeAddInvoiceModalBtn = document.getElementById('closeAddInvoiceModalBtn');
+    addInvoiceForm = document.getElementById('addInvoiceForm');
+    invoiceNumberInput = document.getElementById('invoiceNumber');
+    invoiceDateInput = document.getElementById('invoiceDate');
+    invoiceAmountInput = document.getElementById('invoiceAmount');
+    invoiceStatusSelect = document.getElementById('invoiceStatus');
+
+    // Attendance Module
+    attendanceModule = document.getElementById('attendanceModule');
+    attendanceTableBody = document.getElementById('attendanceTableBody');
+    attendanceModal = document.getElementById('attendanceModal');
+    attendanceModalTitle = document.getElementById('attendanceModalTitle');
+    closeAttendanceModal = document.getElementById('closeAttendanceModal');
+    attendanceForm = document.getElementById('attendanceForm');
+    attendanceIdInput = document.getElementById('attendanceId');
+    attendanceStudentSelect = document.getElementById('attendanceStudentSelect');
+    attendanceDateInput = document.getElementById('attendanceDate');
+    attendanceStatusSelect = document.getElementById('attendanceStatus');
+    attendanceRemarksTextarea = document.getElementById('attendanceRemarks');
+    attendanceFormSubmitBtn = document.getElementById('attendanceFormSubmitBtn');
+    attendanceStudentNameFilter = document.getElementById('attendanceStudentNameFilter');
+    attendanceClassFilter = document.getElementById('attendanceClassFilter');
+    attendanceDateFilter = document.getElementById('attendanceDateFilter');
+    applyAttendanceFilter = document.getElementById('applyAttendanceFilter');
+    attendanceTotalStudents = document.getElementById('attendanceTotalStudents');
+    attendanceTotalPresent = document.getElementById('attendanceTotalPresent');
+    attendanceTotalAbsent = document.getElementById('attendanceTotalAbsent');
+    registerStudentFingerprintBtn = document.getElementById('registerStudentFingerprintBtn');
+    verifyStudentFingerprintBtn = document.getElementById('verifyStudentFingerprintBtn');
+
+    // Teacher Attendance Module
+    teacherAttendanceModule = document.getElementById('teacher-attendanceModule');
+    teacherAttendanceTableBody = document.getElementById('teacherAttendanceTableBody');
+    teacherAttendanceModal = document.getElementById('teacherAttendanceModal');
+    teacherAttendanceModalTitle = document.getElementById('teacherAttendanceModalTitle');
+    closeTeacherAttendanceModal = document.getElementById('closeTeacherAttendanceModal');
+    teacherAttendanceForm = document.getElementById('teacherAttendanceForm');
+    teacherAttendanceIdInput = document.getElementById('teacherAttendanceId');
+    teacherAttendanceTeacherSelect = document.getElementById('teacherAttendanceTeacherSelect');
+    teacherAttendanceDateInput = document.getElementById('teacherAttendanceDate');
+    teacherAttendanceStatusSelect = document.getElementById('teacherAttendanceStatus');
+    teacherAttendanceRemarksTextarea = document.getElementById('teacherAttendanceRemarks');
+    teacherAttendanceFormSubmitBtn = document.getElementById('teacherAttendanceFormSubmitBtn');
+    teacherAttendanceNameFilter = document.getElementById('teacherAttendanceNameFilter');
+    teacherAttendanceSubjectFilter = document.getElementById('teacherAttendanceSubjectFilter');
+    teacherAttendanceDateFilter = document.getElementById('teacherAttendanceDateFilter');
+    applyTeacherAttendanceFilter = document.getElementById('applyTeacherAttendanceFilter');
+    teacherAttendanceTotalTeachers = document.getElementById('teacherAttendanceTotalTeachers');
+    teacherAttendanceTotalPresent = document.getElementById('teacherAttendanceTotalPresent');
+    teacherAttendanceTotalAbsent = document.getElementById('teacherAttendanceTotalAbsent');
+    registerTeacherFingerprintBtn = document.getElementById('registerTeacherFingerprintBtn');
+    verifyTeacherFingerprintBtn = document.getElementById('verifyTeacherFingerprintBtn');
+
+    // Calendar Module
+    calendarModule = document.getElementById('calendarModule');
+    fullCalendarEl = document.getElementById('calendar-full');
+    holidayListContainer = document.getElementById('holidayList'); // Renamed
+
+    // Reports Module
+    reportsModule = document.getElementById('reportsModule');
+
+    // --- Event Listeners ---
+    loginForm.addEventListener('submit', handleLogin);
+    forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleModal(forgotPasswordModal, true);
+    });
+    closeForgotPasswordModal.addEventListener('click', () => toggleModal(forgotPasswordModal, false));
+    forgotPasswordForm.addEventListener('submit', handleForgotPassword);
+
+    roleButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            roleButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            selectedRoleInput.value = button.dataset.role;
+        });
+    });
+
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const module = item.dataset.module;
+            showModule(module);
+        });
+    });
+
+    moduleTabs.addEventListener('click', (e) => {
+        if (e.target.classList.contains('tab')) {
+            const module = e.target.dataset.tab;
+            showModule(module);
+        }
+    });
+
+    document.querySelectorAll('.open-module').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const module = e.target.dataset.module;
+            showModule(module);
+        });
+    });
+
+    userProfileToggle.addEventListener('click', () => {
+        userDropdown.classList.toggle('hidden');
+    });
+
+    logoutButton.addEventListener('click', handleLogout);
+
+    document.addEventListener('click', (event) => {
+        if (userProfileToggle && userDropdown && !userProfileToggle.contains(event.target) && !userDropdown.contains(event.target)) {
+            userDropdown.classList.add('hidden');
+        }
+        if (notificationButton && notificationDropdown && viewAllModal && !notificationButton.contains(event.target) && !notificationDropdown.contains(event.target) && !viewAllModal.contains(event.target)) {
+            notificationDropdown.classList.add('hidden');
+        }
+    });
+
+    notificationButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        notificationDropdown.classList.toggle('hidden');
+    });
+    markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+    viewAllNotificationsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        showAllNotifications();
+        toggleModal(notificationDropdown, false);
+    });
+    closeViewAllModal.addEventListener('click', () => toggleModal(viewAllModal, false));
+    modalMarkAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+
+    darkModeToggle.addEventListener('click', toggleDarkMode);
+
+    // Modal close buttons
+    if (closeUserModal) closeUserModal.addEventListener('click', () => toggleModal(userModal, false));
+    if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', () => toggleModal(announcementModal, false));
+    if (closeStudentModal) closeStudentModal.addEventListener('click', () => toggleModal(studentModal, false));
+    if (closeTeacherModal) closeTeacherModal.addEventListener('click', () => toggleModal(teacherModal, false));
+    if (closePayrollModalBtn) closePayrollModalBtn.addEventListener('click', () => toggleModal(payrollModal, false));
+    if (closeAddInvoiceModalBtn) closeAddInvoiceModalBtn.addEventListener('click', () => toggleModal(addInvoiceModal, false));
+    if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', () => toggleModal(attendanceModal, false));
+    if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', () => toggleModal(teacherAttendanceModal, false));
+
+    // Student Module Specific Listeners
+    if (applySearchButton) applySearchButton.addEventListener('click', filterStudents);
+    if (searchRollInput) searchRollInput.addEventListener('input', filterStudents);
+    if (searchClassSelect) searchClassSelect.addEventListener('change', filterStudents);
+
+    // Attendance Module Specific Listeners
+    if (applyAttendanceFilter) applyAttendanceFilter.addEventListener('click', filterStudentAttendance);
+    if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('input', filterStudentAttendance);
+    if (attendanceClassFilter) attendanceClassFilter.addEventListener('change', filterStudentAttendance);
+    if (attendanceDateFilter) attendanceDateFilter.addEventListener('change', filterStudentAttendance);
+    if (registerStudentFingerprintBtn) registerStudentFingerprintBtn.addEventListener('click', () => {
+        showToast('Student fingerprint registration initiated (simulated).', 'info');
+    });
+    if (verifyStudentFingerprintBtn) verifyStudentFingerprintBtn.addEventListener('click', () => {
+        showToast('Student fingerprint verification initiated (simulated). Marking present if successful.', 'info');
+        if (attendanceStatusSelect) attendanceStatusSelect.value = 'Present';
+        showToast('Student marked Present via fingerprint (simulated).', 'success');
+    });
+
+    // Teacher Attendance Module Specific Listeners
+    if (applyTeacherAttendanceFilter) applyTeacherAttendanceFilter.addEventListener('click', filterTeacherAttendance);
+    if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('input', filterTeacherAttendance);
+    if (teacherAttendanceSubjectFilter) teacherAttendanceSubjectFilter.addEventListener('change', filterTeacherAttendance);
+    if (teacherAttendanceDateFilter) teacherAttendanceDateFilter.addEventListener('change', filterTeacherAttendance);
+    if (registerTeacherFingerprintBtn) registerTeacherFingerprintBtn.addEventListener('click', () => {
+        showToast('Teacher fingerprint registration initiated (simulated).', 'info');
+    });
+    if (verifyTeacherFingerprintBtn) verifyTeacherFingerprintBtn.addEventListener('click', () => {
+        showToast('Teacher fingerprint verification initiated (simulated). Marking present if successful.', 'info');
+        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = 'Present';
+        showToast('Teacher marked Present via fingerprint (simulated).', 'success');
+    });
+
+    // Forms
+    if (profileForm) profileForm.addEventListener('submit', profileFormSubmitHandler);
+    if (profilePictureInput) profilePictureInput.addEventListener('change', profilePictureChangeHandler);
+    if (userForm) userForm.addEventListener('submit', userFormSubmitHandler);
+    if (announcementForm) announcementForm.addEventListener('submit', announcementFormSubmitHandler);
+    if (studentForm) studentForm.addEventListener('submit', studentFormSubmitHandler);
+    if (teacherForm) teacherForm.addEventListener('submit', teacherFormSubmitHandler);
+    if (payrollForm) payrollForm.addEventListener('submit', payrollFormSubmitHandler);
+    if (addInvoiceForm) addInvoiceForm.addEventListener('submit', addInvoiceFormSubmitHandler);
+    if (attendanceForm) attendanceForm.addEventListener('submit', attendanceFormSubmitHandler);
+    if (teacherAttendanceForm) teacherAttendanceForm.addEventListener('submit', teacherAttendanceFormSubmitHandler);
+
+    // --- Initial Load ---
+    console.log('DOMContentLoaded fired.');
+    applyTheme();
+    await loadNotifications(); // Load notifications from Supabase
+
+    // Check Supabase session initially
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('Initial Supabase session check. Session:', session, 'Error:', error);
+
+    if (session) {
+        const userEmail = session.user?.email;
+        const userData = await fetchUserData(userEmail);
+
+        if (!userData) {
+            console.error('Error fetching user data from public.profiles: User data not found or inconsistent. Forcing logout.');
+            showToast('Failed to retrieve user role. Please log in again.', 'error');
+            await supabase.auth.signOut();
+            renderLoginUi();
+            return;
+        }
+
+        localStorage.setItem('loggedInUserRole', userData.role);
+        localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+        console.log('Session found on DOMContentLoaded. Calling renderSchoolSite().');
+        renderSchoolSite();
+    } else {
+        console.log('No session found on DOMContentLoaded. Calling renderLoginUi().');
+        renderLoginUi();
+    }
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN') {
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session?.user.id)
+                .single();
+
+            if (profileError && profileError.code === 'PGRST116') {
+                console.warn('No profile found for new user, creating one.');
+                await supabase
+                    .from('profiles')
+                    .upsert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        full_name: session.user.email.split('@')[0],
+                        role: 'student',
+                        status: 'Active'
+                    });
+            } else if (profileError) {
+                console.error('Profile fetch error on auth state change:', profileError);
+                showToast('Error fetching user profile. Please try again.', 'error');
+                await supabase.auth.signOut();
+                renderLoginUi();
+                return;
+            }
+
+            const userEmail = session.user.email;
+            const userData = await fetchUserData(userEmail);
+
+            if (!userData) {
+                console.error('Error fetching user data on auth state change: User data not found. Forcing logout.');
+                showToast('Failed to retrieve user role. Please log in again.', 'error');
+                await supabase.auth.signOut();
+                renderLoginUi();
+                return;
+            }
+            localStorage.setItem('loggedInUserRole', userData.role);
+            localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+            renderSchoolSite();
+
+            const userId = session.user.id;
+            const { data, error: fetchError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId);
+            console.log('User data from public.profiles table on auth state change (for debugging):', data);
+        } else if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('loggedInUserRole');
+            localStorage.removeItem('loggedInUserName');
+            renderLoginUi();
+        }
+    });
+});
 
 // --- Utility Functions ---
 
 /**
- * Generates a unique UUID.
- * @returns {string} A UUID string.
+ * Displays a toast notification.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification (e.g., 'success', 'error', 'info').
  */
-function generateUniqueId() {
-    return crypto.randomUUID();
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toast-container') || (() => {
+        const div = document.createElement('div');
+        div.id = 'toast-container';
+        div.className = 'fixed bottom-4 right-4 z-[1000] space-y-2';
+        document.body.appendChild(div);
+        return div;
+    })();
+
+    const toast = document.createElement('div');
+    toast.className = `p-3 rounded-lg shadow-md text-white flex items-center space-x-2 animate-slideInRight`;
+
+    let bgColor = 'bg-gray-700';
+    let icon = '<i class="fas fa-info-circle"></i>';
+
+    switch (type) {
+        case 'success':
+            bgColor = 'bg-green-500';
+            icon = '<i class="fas fa-check-circle"></i>';
+            break;
+        case 'error':
+            bgColor = 'bg-red-500';
+            icon = '<i class="fas fa-times-circle"></i>';
+            break;
+        case 'warning':
+            bgColor = 'bg-yellow-500';
+            icon = '<i class="fas fa-exclamation-triangle"></i>';
+            break;
+        case 'info':
+        default:
+            bgColor = 'bg-blue-500';
+            icon = '<i class="fas fa-info-circle"></i>';
+            break;
+    }
+
+    toast.classList.add(bgColor);
+    toast.innerHTML = `${icon} <span>${message}</span>`;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('animate-slideOutRight');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 3000);
 }
 
 /**
- * Adds an entry to the audit logs table in Supabase.
+ * Toggles the visibility of a modal.
+ * @param {HTMLElement} modalElement - The modal element to toggle.
+ * @param {boolean} show - Whether to show or hide the modal.
+ */
+function toggleModal(modalElement, show) {
+    if (show) {
+        modalElement.classList.remove('hidden');
+        modalElement.classList.add('flex');
+    } else {
+        modalElement.classList.add('hidden');
+        modalElement.classList.remove('flex');
+    }
+}
+
+/**
+ * Types out a welcome message character by character.
+ * @param {string} message - The message to type.
+ * @param {HTMLElement} element - The DOM element to type into.
+ * @param {number} delay - Delay between characters in ms.
+ */
+function typeWriter(message, element, delay = 50) {
+    let i = 0;
+    element.textContent = ''; // Clear existing text
+    function type() {
+        if (i < message.length) {
+            element.textContent += message.charAt(i);
+            i++;
+            setTimeout(type, delay);
+        }
+    }
+    type();
+}
+
+/**
+ * Fetches data from Supabase.
+ * @param {string} tableName - The name of the table to fetch from.
+ * @param {string} [filterColumn] - Optional column to filter by.
+ * @param {string} [filterValue] - Optional value to filter by.
+ * @returns {Promise<Array>} - A promise that resolves to an array of data.
+ */
+async function fetchData(tableName, filterColumn = null, filterValue = null) {
+    try {
+        let query = supabase.from(tableName).select('*');
+        if (filterColumn && filterValue) {
+            query = query.eq(filterColumn, filterValue);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error(`Error fetching ${tableName}:`, error.message);
+        showToast(`Error fetching ${tableName}: ${error.message}`, 'error');
+        return [];
+    }
+}
+
+/**
+ * Inserts data into a Supabase table.
+ * @param {string} tableName - The name of the table to insert into.
+ * @param {object} record - The record to insert.
+ * @returns {Promise<object|null>} - A promise that resolves to the inserted record or null on error.
+ */
+async function insertData(tableName, record) {
+    try {
+        const { data, error } = await supabase.from(tableName).insert([record]).select();
+        if (error) throw error;
+        showToast(`${tableName.slice(0, -1)} added successfully!`, 'success');
+        return data[0];
+    } catch (error) {
+        console.error(`Error adding ${tableName.slice(0, -1)}:`, error.message);
+        showToast(`Error adding ${tableName.slice(0, -1)}: ${error.message}`, 'error');
+        return null;
+    }
+}
+
+/**
+ * Updates data in a Supabase table.
+ * @param {string} tableName - The name of the table to update.
+ * @param {object} record - The record with updated data.
+ * @param {string} id - The ID of the record to update.
+ * @returns {Promise<object|null>} - A promise that resolves to the updated record or null on error.
+ */
+async function updateData(tableName, record, id) {
+    try {
+        const { data, error } = await supabase.from(tableName).update(record).eq('id', id).select();
+        if (error) throw error;
+        showToast(`${tableName.slice(0, -1)} updated successfully!`, 'success');
+        return data[0];
+    } catch (error) {
+        console.error(`Error updating ${tableName.slice(0, -1)}:`, error.message);
+        showToast(`Error updating ${tableName.slice(0, -1)}: ${error.message}`, 'error');
+        return null;
+    }
+}
+
+/**
+ * Deletes data from a Supabase table.
+ * @param {string} tableName - The name of the table to delete from.
+ * @param {string} id - The ID of the record to delete.
+ * @returns {Promise<boolean>} - A promise that resolves to true if successful, false otherwise.
+ */
+async function deleteData(tableName, id) {
+    try {
+        const { error } = await supabase.from(tableName).delete().eq('id', id);
+        if (error) throw error;
+        showToast(`${tableName.slice(0, -1)} deleted successfully!`, 'success');
+        return true;
+    } catch (error) {
+        console.error(`Error deleting ${tableName.slice(0, -1)}:`, error.message);
+        showToast(`Error deleting ${tableName.slice(0, -1)}: ${error.message}`, 'error');
+        return false;
+    }
+}
+
+/**
+ * Fetches user data from the 'profiles' table by email.
+ * @param {string} userEmail - The email of the user to fetch.
+ * @returns {Promise<object|null>} - A promise that resolves to the user data or null on error.
+ */
+async function fetchUserData(email) {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                console.warn(`No user profile found with email: ${email}`);
+                return null;
+            }
+            throw new Error(`Error fetching user data: ${error.message}`);
+        }
+        return data;
+
+    } catch (error) {
+        console.error('Profile fetch error:', error);
+        return null;
+    }
+}
+
+/**
+ * Adds an entry to the audit logs table in Supabase. (From script1.js)
  * @param {string} userEmail - The email of the user performing the action.
  * @param {string} action - The action performed (e.g., 'Logged In', 'Added Student').
  * @param {string} module - The module where the action occurred (e.g., 'Authentication', 'Students').
@@ -36,12 +661,11 @@ function generateUniqueId() {
  */
 async function addAuditLog(userEmail, action, module, details) {
     try {
-        // Ensure the userEmail is not null or undefined for audit logs
-        const emailToLog = userEmail || 'anonymous@example.com'; // Fallback email for unauthenticated actions
+        const emailToLog = userEmail || 'anonymous@example.com';
 
         const { data, error } = await supabase.from('audit_logs').insert([
             {
-                user_email: emailToLog, // Changed 'user' to 'user_email' to match common database column naming
+                user_email: emailToLog,
                 action: action,
                 module: module,
                 details: details,
@@ -50,8 +674,6 @@ async function addAuditLog(userEmail, action, module, details) {
         ]);
         if (error) {
             console.error('Error adding audit log:', error);
-            // You need to configure RLS policies in your Supabase dashboard to allow inserts into 'audit_logs'.
-            // For example, allow 'authenticated' users to insert, or even 'anon' if you want to log pre-login attempts.
         } else {
             console.log('Audit log added:', data);
         }
@@ -61,7 +683,7 @@ async function addAuditLog(userEmail, action, module, details) {
 }
 
 /**
- * Converts an ArrayBuffer to a Base64 string.
+ * Converts an ArrayBuffer to a Base64 string. (From script1.js)
  * Used for storing WebAuthn credentials.
  * @param {ArrayBuffer} buffer - The ArrayBuffer to convert.
  * @returns {string} The Base64 encoded string.
@@ -71,7 +693,7 @@ function arrayBufferToBase64(buffer) {
 }
 
 /**
- * Converts a Base64 string to an ArrayBuffer.
+ * Converts a Base64 string to an ArrayBuffer. (From script1.js)
  * Used for retrieving WebAuthn credentials.
  * @param {string} base64 - The Base64 string to convert.
  * @returns {ArrayBuffer} The ArrayBuffer.
@@ -86,517 +708,203 @@ function base64ToArrayBuffer(base64) {
     return bytes.buffer;
 }
 
-// --- Data Fetching Functions (from Supabase) ---
+// --- Authentication Functions ---
 
-async function fetchStudents() {
+async function handleLogin(event) {
+    event.preventDefault();
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    const role = selectedRoleInput.value;
+
+    showToast('Authenticating...', 'info');
+
     try {
-        const { data, error } = await supabase.from('students').select('*');
-        if (error) throw error;
-        students = data;
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (authError) {
+            console.error('Auth Error:', authError);
+            showToast(`Login failed: ${authError.message}`, 'error');
+            await addAuditLog(email, 'Login Failed', 'Authentication', `Error: ${authError.message}`);
+            return;
+        }
+
+        const userData = await fetchUserData(email);
+        if (!userData) {
+            await supabase.auth.signOut();
+            showToast('Login failed: User profile not found. Please contact support.', 'error');
+            await addAuditLog(email, 'Login Failed', 'Authentication', 'User profile not found.');
+            return;
+        }
+
+        // Role mismatch check:
+        // An admin user can log in as any role (for testing/management purposes in a demo).
+        // Other roles must match their registered role.
+        if (userData.role !== role && role !== 'admin') {
+            await supabase.auth.signOut();
+            showToast(`Login failed: You are registered as a ${userData.role}, not a ${role}. Please select your correct role.`, 'error');
+            await addAuditLog(email, 'Login Failed (Role Mismatch)', 'Authentication', `User ${email} attempted login as ${role}, but actual role is ${userData.role}.`);
+            return;
+        }
+
+        localStorage.setItem('loggedInUserRole', userData.role);
+        localStorage.setItem('loggedInUserName', userData.full_name || email.split('@')[0]);
+
+        showToast('Login successful! Redirecting...', 'success');
+        await addAuditLog(email, 'Logged In', 'Authentication', `Successful login for role: ${userData.role}`);
+        renderSchoolSite();
+
     } catch (error) {
-        console.error('Error fetching students:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'students' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see student data (e.g., 'admin', 'teacher', 'student').
-        students = [];
-    } finally {
-        renderStudentTable();
-        updateDashboardStats();
+        console.error('Login Error:', error);
+        showToast(`Login failed: ${error.message}`, 'error');
+        loginForm.reset();
+        await addAuditLog(email, 'Login Failed (Unexpected)', 'Authentication', `Unexpected error: ${error.message}`);
     }
 }
 
-async function fetchTeachers() {
+async function handleForgotPassword(event) {
+    event.preventDefault();
+    const email = forgotEmailInput.value;
     try {
-        const { data, error } = await supabase.from('teachers').select('*');
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + '/update-password.html',
+        });
         if (error) throw error;
-        teachers = data;
+        showToast(`Password reset link sent to ${email}. Please check your email.`, 'info');
+        toggleModal(forgotPasswordModal, false);
+        forgotPasswordForm.reset();
+        await addAuditLog(email, 'Forgot Password Initiated', 'Authentication', 'Password reset link sent.');
     } catch (error) {
-        console.error('Error fetching teachers:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'teachers' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see teacher data (e.g., 'admin', 'teacher').
-        teachers = [];
-    } finally {
-        renderTeacherTable();
-        updateDashboardStats();
+        console.error('Forgot password error:', error.message);
+        showToast(`Forgot password failed: ${error.message}`, 'error');
+        await addAuditLog(email, 'Forgot Password Failed', 'Authentication', `Failed to send reset link: ${error.message}`);
     }
 }
 
-async function fetchPayrollEntries() {
+async function handleLogout() {
+    const userEmail = localStorage.getItem('loggedInUserName') || 'Unknown';
     try {
-        const { data, error } = await supabase.from('payroll_entries').select('*');
+        const { error } = await supabase.auth.signOut();
         if (error) throw error;
-        payrollEntries = data;
+        localStorage.removeItem('loggedInUserRole');
+        localStorage.removeItem('loggedInUserName');
+        showToast('Logged out successfully!', 'info');
+        await addAuditLog(userEmail, 'Logged Out', 'Authentication', 'User logged out');
+        renderLoginUi();
     } catch (error) {
-        console.error('Error fetching payroll entries:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'payroll_entries' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see payroll data (e.g., 'admin').
-        payrollEntries = [];
-    } finally {
-        renderPayrollTable();
+        console.error('Logout error:', error.message);
+        showToast(`Logout failed: ${error.message}`, 'error');
+        await addAuditLog(userEmail, 'Logout Failed', 'Authentication', `Error: ${error.message}`);
     }
 }
 
-async function fetchInvoices() {
-    try {
-        const { data, error } = await supabase.from('invoices').select('*');
-        if (error) throw error;
-        invoices = data;
-    } catch (error) {
-        console.error('Error fetching invoices:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'invoices' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see invoice data (e.g., 'admin').
-        invoices = [];
-    } finally {
-        renderFinanceTable();
-        updateDashboardStats();
+// --- UI Rendering Functions ---
+
+function renderLoginUi() {
+    console.log('renderLoginUi() called.');
+    if (loginUi) {
+        loginUi.classList.remove('hidden');
+        loginUi.style.display = 'flex'; // Ensure it's flex for centering
+        document.body.style.justifyContent = 'center';
+        document.body.style.alignItems = 'center';
+        document.body.style.minHeight = '100vh';
+        document.body.style.overflow = 'hidden';
     }
-}
-
-async function fetchAnnouncements() {
-    try {
-        const { data, error } = await supabase.from('announcements').select('*');
-        if (error) throw error;
-        announcements = data;
-    } catch (error) {
-        console.error('Error fetching announcements:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'announcements' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see announcements (e.g., 'admin', 'teacher', 'student').
-        announcements = [];
-    } finally {
-        renderAnnouncementTable();
+    if (schoolSiteUi) {
+        schoolSiteUi.classList.add('hidden');
+        schoolSiteUi.style.display = 'none';
     }
+    typeWriter("Welcome to Tapowan Public School", typedWelcome);
+    loginForm.reset();
+    emailInput.value = '';
+    passwordInput.value = '';
+    selectedRoleInput.value = 'admin'; // Reset to default
+    roleButtons.forEach(button => {
+        if (button.dataset.role === 'admin') {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
 }
 
-async function fetchNotifications() {
-    // Notifications are still client-side for simplicity, but could be fetched from DB
-    notifications = JSON.parse(localStorage.getItem('notifications')) || [
-        { id: 1, title: "New student enrolled!", description: "Emily Johnson joined Grade 10.", time: "5 minutes ago", unread: true },
-        { id: 2, title: "Payroll processed", description: "March payroll completed for all staff.", time: "1 hour ago", unread: true },
-        { id: 3, title: "Event Reminder", description: "Parent-Teacher meeting tomorrow at 3 PM.", time: "Yesterday", unread: true },
-        { id: 4, title: "System Update", description: "System maintenance scheduled for Sunday.", time: "2 days ago", unread: false },
-    ];
-    renderDropdownNotifications();
-}
-
-async function fetchAuditLogs() {
-    try {
-        const { data, error } = await supabase.from('audit_logs').select('*').order('timestamp', { ascending: false });
-        if (error) throw error;
-        auditLogs = data;
-    } catch (error) {
-        console.error('Error fetching audit logs:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'audit_logs' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see audit logs (e.g., 'admin').
-        auditLogs = [];
-    } finally {
-        renderAuditLogs();
-        renderRecentActivity();
+async function renderSchoolSite() {
+    console.log('renderSchoolSite() called.');
+    if (loginUi) {
+        loginUi.classList.add('hidden');
+        loginUi.style.display = 'none';
     }
-}
-
-async function fetchBackups() {
-    // Backups are simulated, but could be fetched from a storage service
-    backups = JSON.parse(localStorage.getItem('backups')) || [
-        { id: 'B001', backup_id: 'BK20231026-001', date: '2023-10-26 02:00:00', size: '150 MB', type: 'Full' },
-        { id: 'B002', backup_id: 'BK20231025-001', date: '2023-10-25 02:00:00', size: '148 MB', type: 'Full' }
-    ];
-    renderBackupTable();
-}
-
-async function fetchAttendanceRecords() {
-    try {
-        const { data, error } = await supabase.from('attendance_records').select('*');
-        if (error) throw error;
-        attendanceRecords = data;
-    } catch (error) {
-        console.error('Error fetching attendance records:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'attendance_records' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see attendance data (e.g., 'admin', 'teacher').
-        attendanceRecords = [];
-    } finally {
-        renderAttendanceTable();
+    if (schoolSiteUi) {
+        schoolSiteUi.classList.remove('hidden');
+        schoolSiteUi.style.display = 'flex';
+        document.body.style.justifyContent = 'flex-start';
+        document.body.style.alignItems = 'flex-start';
+        document.body.style.minHeight = 'auto';
+        document.body.style.overflow = 'auto';
     }
-}
 
-async function fetchTeacherAttendanceRecords() {
-    try {
-        const { data, error } = await supabase.from('teacher_attendance_records').select('*');
-        if (error) throw error;
-        teacherAttendanceRecords = data;
-    } catch (error) {
-        console.error('Error fetching teacher attendance records:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'teacher_attendance_records' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see teacher attendance data (e.g., 'admin').
-        teacherAttendanceRecords = [];
-    } finally {
-        renderTeacherAttendanceTable();
-    }
-}
+    const userRole = localStorage.getItem('loggedInUserRole') || 'Admin';
+    const userName = localStorage.getItem('loggedInUserName') || 'Admin';
+    loggedInUserName.textContent = userName;
+    console.log(`Logged in as: ${userName} (${userRole})`);
 
-async function fetchProfiles() {
-    try {
-        const { data, error } = await supabase.from('profiles').select('*');
-        if (error) throw error;
-        profiles = data;
-    } catch (error) {
-        console.error('Error fetching profiles:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'profiles' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see profile data.
-        profiles = [];
-    } finally {
-        // You might want to render a user management table or update other UI elements here
-        renderUserTable(); // Assuming renderUserTable will now use the 'profiles' data
-    }
-}
-
-// --- Initial Data Load ---
-async function loadAllData() {
-    await Promise.all([
-        fetchStudents(),
-        fetchTeachers(),
-        fetchPayrollEntries(),
-        fetchInvoices(),
-        fetchAnnouncements(),
-        fetchNotifications(), // Still local
-        fetchAuditLogs(),
-        fetchBackups(), // Still local
-        fetchAttendanceRecords(),
-        fetchTeacherAttendanceRecords(),
-        fetchProfiles() // Fetch profiles data
-    ]);
-    updateDashboardStats();
-    renderHolidayList();
-    renderReportsCharts();
-}
-
-// --- UI Element References ---
-const loginUi = document.getElementById('login-ui');
-const schoolSiteUi = document.getElementById('school-site-ui');
-
-// Login UI Elements
-const roleButtons = document.querySelectorAll('.role-button');
-const selectedRoleInput = document.getElementById('selectedRole');
-const loginForm = document.getElementById('loginForm');
-const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-const forgotPasswordModal = document.getElementById('forgotPasswordModal');
-const closeForgotPasswordModal = document.getElementById('closeForgotPasswordModal');
-const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-
-// School Site UI Elements
-// const logoutButton = document.getElementById('logoutButton'); // Removed logout button
-const notificationButton = document.getElementById('notificationButton');
-const notificationDropdown = document.getElementById('notificationDropdown');
-const markAllReadBtn = document.getElementById('markAllReadBtn');
-const viewAllNotificationsLink = document.getElementById('viewAllNotificationsLink');
-const notificationList = document.getElementById("notificationList");
-const notificationCount = document.getElementById("notificationCount");
-const newCount = document.getElementById("newCount");
-const loggedInUserName = document.getElementById('loggedInUserName');
-const currentModuleTitle = document.getElementById('currentModuleTitle');
-
-const viewAllModal = document.getElementById("viewAllModal");
-const viewAllNotificationList = document.getElementById("viewAllNotificationList");
-const closeViewAllModal = document.getElementById("closeViewAllModal");
-const modalMarkAllReadBtn = document.getElementById("modalMarkAllReadBtn");
-
-const openPayrollModalBtn = document.getElementById('openPayrollModalBtn');
-const payrollModal = document.getElementById('payrollModal');
-const closePayrollModalBtn = document.getElementById('closePayrollModalBtn');
-const payrollForm = document.getElementById('payrollForm');
-const payrollTableBody = document.getElementById('payrollTableBody');
-
-const openAddInvoiceModalBtn = document.getElementById('openAddInvoiceModalBtn');
-const addInvoiceModal = document.getElementById('addInvoiceModal');
-const closeAddInvoiceModalBtn = document.getElementById('closeAddInvoiceModalBtn');
-const addInvoiceForm = document.getElementById('addInvoiceForm');
-const financeTableBody = document.getElementById('financeTableBody');
-
-const userProfileToggle = document.getElementById('userProfileToggle');
-const userDropdown = document.getElementById('userDropdown');
-
-const searchRollInput = document.getElementById('searchRoll');
-const searchClassSelect = document.getElementById('searchClass');
-const applySearchButton = document.getElementById('applySearch');
-const studentTableBody = document.getElementById('studentTableBody');
-
-const studentModal = document.getElementById('studentModal');
-const closeStudentModal = document.getElementById('closeStudentModal');
-const studentForm = document.getElementById('studentForm');
-const studentModalTitle = document.getElementById('studentModalTitle');
-const studentFormSubmitBtn = document.getElementById('studentFormSubmitBtn');
-
-const teacherModal = document.getElementById('teacherModal');
-const closeTeacherModal = document.getElementById('closeTeacherModal');
-const teacherForm = document.getElementById('teacherForm');
-const teacherTableBody = document.getElementById('teacherTableBody');
-const teacherModalTitle = document.getElementById('teacherModalTitle');
-const teacherFormSubmitBtn = document.getElementById('teacherFormSubmitBtn');
-
-const userModal = document.getElementById('userModal');
-const closeUserModal = document.getElementById('closeUserModal');
-const userForm = document.getElementById('userForm');
-const userTableBody = document.getElementById('userTableBody');
-const userModalTitle = document.getElementById('userModalTitle');
-const userFormSubmitBtn = document.getElementById('userFormSubmitBtn');
-
-const announcementModal = document.getElementById('announcementModal');
-const closeAnnouncementModal = document.getElementById('closeAnnouncementModal');
-const announcementForm = document.getElementById('announcementForm');
-const announcementTableBody = document.getElementById('announcementTableBody');
-const announcementModalTitle = document.getElementById('announcementModalTitle');
-const announcementFormSubmitBtn = document.getElementById('announcementFormSubmitBtn');
-
-const auditLogTableBody = document.getElementById('auditLogTableBody');
-const backupTableBody = document.getElementById('backupTableBody');
-const recentActivityList = document.getElementById('recentActivityList');
-
-// Dashboard Stats Elements
-const totalStudentsCount = document.getElementById('totalStudentsCount');
-const totalTeachersCount = document.getElementById('totalTeachersCount');
-const monthlyRevenue = document.getElementById('monthlyRevenue');
-const upcomingEventsCount = document.getElementById('upcomingEventsCount');
-
-// Chart.js instances
-let attendanceChartInstance = null;
-let performanceChartInstance = null;
-
-// Student Attendance Module Elements
-const attendanceModal = document.getElementById('attendanceModal');
-const closeAttendanceModal = document.getElementById('closeAttendanceModal');
-const attendanceForm = document.getElementById('attendanceForm');
-const attendanceModalTitle = document.getElementById('attendanceModalTitle');
-const attendanceFormSubmitBtn = document.getElementById('attendanceFormSubmitBtn');
-const attendanceStudentSelect = document.getElementById('attendanceStudentSelect');
-const attendanceTableBody = document.getElementById('attendanceTableBody');
-const attendanceClassFilter = document.getElementById('attendanceClassFilter');
-const attendanceDateFilter = document.getElementById('attendanceDateFilter');
-const attendanceStudentNameFilter = document.getElementById('attendanceStudentNameFilter');
-const applyAttendanceFilter = document.getElementById('applyAttendanceFilter');
-const attendanceTotalStudents = document.getElementById('attendanceTotalStudents');
-const attendanceTotalPresent = document.getElementById('attendanceTotalPresent');
-const attendanceTotalAbsent = document.getElementById('attendanceTotalAbsent');
-const registerStudentFingerprintBtn = document.getElementById('registerStudentFingerprintBtn');
-const verifyStudentFingerprintBtn = document.getElementById('verifyStudentFingerprintBtn');
-
-// Teacher Attendance Module Elements
-const teacherAttendanceModal = document.getElementById('teacherAttendanceModal');
-const closeTeacherAttendanceModal = document.getElementById('closeTeacherAttendanceModal');
-const teacherAttendanceForm = document.getElementById('teacherAttendanceForm');
-const teacherAttendanceModalTitle = document.getElementById('teacherAttendanceModalTitle');
-const teacherAttendanceFormSubmitBtn = document.getElementById('teacherAttendanceFormSubmitBtn');
-const teacherAttendanceTeacherSelect = document.getElementById('teacherAttendanceTeacherSelect');
-const teacherAttendanceTableBody = document.getElementById('teacherAttendanceTableBody');
-const teacherAttendanceSubjectFilter = document.getElementById('teacherAttendanceSubjectFilter');
-const teacherAttendanceDateFilter = document.getElementById('teacherAttendanceDateFilter');
-const teacherAttendanceNameFilter = document.getElementById('teacherAttendanceNameFilter');
-const applyTeacherAttendanceFilter = document.getElementById('applyTeacherAttendanceFilter');
-const teacherAttendanceTotalTeachers = document.getElementById('teacherAttendanceTotalTeachers');
-const teacherAttendanceTotalPresent = document.getElementById('teacherAttendanceTotalPresent');
-const teacherAttendanceTotalAbsent = document.getElementById('teacherAttendanceTotalAbsent');
-const registerTeacherFingerprintBtn = document.getElementById('registerTeacherFingerprintBtn');
-const verifyTeacherFingerprintBtn = document = document.getElementById('verifyTeacherFingerprintBtn');
-
-// Dark Mode Elements
-const darkModeToggle = document.getElementById('darkModeToggle');
-const darkModeIcon = darkModeToggle.querySelector('i');
-
-// --- Initial UI State Management ---
-
-/**
- * Shows the login UI and hides the main school site UI.
- */
-function showLoginUi() {
-    loginUi.style.display = 'flex';
-    schoolSiteUi.style.display = 'none';
-    document.body.style.justifyContent = 'center';
-    document.body.style.alignItems = 'center';
-    document.body.style.minHeight = '100vh';
-    document.body.style.backgroundColor = 'var(--light)';
-    document.body.style.overflow = 'hidden';
-}
-
-/**
- * Shows the main school site UI and hides the login UI.
- * Loads all initial data and updates UI elements.
- */
-async function showSchoolSiteUi() {
-    loginUi.style.display = 'none';
-    schoolSiteUi.style.display = 'flex';
-    document.body.style.justifyContent = 'flex-start';
-    document.body.style.alignItems = 'flex-start';
-    document.body.style.minHeight = 'auto';
-    document.body.style.backgroundColor = 'var(--light)';
-    document.body.style.overflow = 'auto';
-
+    updateSidebarVisibility(userRole);
     await loadAllData(); // Load all data from Supabase
-
-    updateLoggedInUserName();
-    updateUIAccessByRole(); // Adjust UI based on role
-
-    if (typeof calendar !== 'undefined' && calendar) {
-        calendar.render();
-    }
-    renderReportsCharts();
+    initializeFullCalendar(); // Initialize calendar after data is loaded
+    renderHolidayList(); // Render holidays after data is loaded
+    renderReportsCharts(); // Render charts after data is loaded
+    showModule('dashboard'); // Default to dashboard
 }
 
 /**
  * Updates UI elements (navigation, buttons) based on the logged-in user's role.
+ * Combines logic from both script.js and script1.js.
  */
-function updateUIAccessByRole() {
-    try {
-        // 1. Get logged in user from localStorage
-        const loggedInUserString = localStorage.getItem('loggedInUser');
-        if (!loggedInUserString) {
-            console.warn('No logged in user found - showing minimal UI');
-            return hideRestrictedUIElements();
-        }
+function updateSidebarVisibility(role) {
+    // Hide all nav items by default
+    navItems.forEach(item => item.classList.add('hidden'));
 
-        // 2. Parse user data safely
-        const loggedInUser = JSON.parse(loggedInUserString);
-        if (!loggedInUser) {
-            console.error('Failed to parse user data');
-            return hideRestrictedUIElements();
-        }
+    // Define module access based on role
+    const accessMap = {
+        'admin': [
+            'dashboard', 'profile', 'announcements', 'calendar', 'reports',
+            'user-management', 'students', 'teachers', 'payroll', 'finance',
+            'attendance', 'teacher-attendance', 'audit-logs', 'backup-restore'
+        ],
+        'teacher': [
+            'dashboard', 'profile', 'announcements', 'calendar', 'reports',
+            'students', 'attendance'
+        ],
+        'student': [
+            'dashboard', 'profile', 'announcements', 'calendar', 'reports'
+        ]
+    };
 
-        // 3. Determine user role with clear precedence
-        let userRole;
-        // Check raw_user_meta_data first, then app_metadata, then default to 'admin'
-        // This ensures that if a user is explicitly assigned a role in Supabase, it's used.
-        // If no role is found, it defaults to 'admin' for broader access in this demo.
-        if (loggedInUser.raw_user_meta_data?.role) {
-            userRole = loggedInUser.raw_user_meta_data.role; // Highest priority for raw_user_meta_data
-        } else if (loggedInUser.app_metadata?.role) { 
-            userRole = loggedInUser.app_metadata.role; // Second priority for app_metadata
+    const allowedModules = accessMap[role] || [];
+
+    navItems.forEach(item => {
+        const module = item.dataset.module;
+        if (allowedModules.includes(module)) {
+            item.classList.remove('hidden');
+        }
+    });
+
+    // Adjust visibility of section headers based on visible modules
+    document.querySelectorAll('.nav-section').forEach(section => {
+        const visibleItems = Array.from(section.querySelectorAll('.nav-item')).some(item => !item.classList.contains('hidden'));
+        if (!visibleItems) {
+            section.classList.add('hidden');
         } else {
-            userRole = 'admin'; // Default fallback if no role is explicitly set
-            console.info('No specific role found in user metadata, defaulting to "admin" for UI access.');
-        }
-
-        // 4. Update UI elements based on role
-        updateUIElementsForRole(userRole);
-
-    } catch (error) {
-        console.error('Error in updateUIAccessByRole:', error);
-        // Fallback to most restrictive access in case of an error
-        hideRestrictedUIElements();
-    }
-}
-
-// Helper functions
-function hideRestrictedUIElements() {
-    // Hide all admin/privileged UI elements
-    document.querySelectorAll('[data-role="admin"]').forEach(el => {
-        el.style.display = 'none';
-    });
-    // Also hide teacher-specific elements if no user is logged in or role is not teacher/admin
-    document.querySelectorAll('[data-role="teacher"]').forEach(el => {
-        el.style.display = 'none';
-    });
-    // Ensure student elements are visible if they are meant to be for all logged-in users
-    document.querySelectorAll('[data-role="student"]').forEach(el => {
-        el.style.display = 'block';
-    });
-
-    // Specific navigation items based on the original logic
-    document.querySelectorAll('.nav-item').forEach(navItem => {
-        const module = navItem.dataset.module;
-        let show = false;
-        switch (module) {
-            case 'dashboard':
-            case 'announcements':
-            case 'calendar':
-                show = true; // These are generally visible to all logged-in users
-                break;
-            default:
-                show = false; // Hide others by default
-        }
-        if (show) {
-            navItem.classList.remove('hidden');
-        } else {
-            navItem.classList.add('hidden');
+            section.classList.remove('hidden');
         }
     });
 
-    // Specific buttons/forms based on the original logic
-    const addStudentBtn = document.getElementById('addStudentBtn');
-    if (addStudentBtn) addStudentBtn.classList.add('hidden');
-    const addTeacherBtn = document.getElementById('addTeacherBtn');
-    if (addTeacherBtn) addTeacherBtn.classList.add('hidden');
-    const addUserBtn = document.getElementById('addUserBtn');
-    if (addUserBtn) addUserBtn.classList.add('hidden');
-    if (openPayrollModalBtn) openPayrollModalBtn.classList.add('hidden');
-    if (openAddInvoiceModalBtn) openAddInvoiceModalBtn.classList.add('hidden');
-}
-
-function updateUIElementsForRole(role) {
-    // Show/hide elements based on role
-    // This function now handles both data-role attributes and specific element IDs
-    // to maintain the original script's behavior while integrating the new role logic.
-
-    // Handle elements with data-role attributes
-    document.querySelectorAll('[data-role]').forEach(el => {
-        const requiredRole = el.dataset.role;
-        let showElement = false;
-
-        switch (requiredRole) {
-            case 'admin':
-                showElement = role === 'admin';
-                break;
-            case 'teacher':
-                showElement = ['admin', 'teacher'].includes(role);
-                break;
-            case 'student':
-                showElement = ['admin', 'teacher', 'student'].includes(role); // Visible to all logged-in users
-                break;
-            default:
-                showElement = false;
-        }
-        el.style.display = showElement ? 'block' : 'none';
-    });
-
-    // Handle navigation items based on the original script's logic
-    document.querySelectorAll('.nav-item').forEach(navItem => {
-        const module = navItem.dataset.module;
-        let show = false;
-        switch (module) {
-            case 'dashboard':
-                show = true; // Always visible
-                break;
-            case 'students':
-            case 'teachers':
-            case 'payroll':
-            case 'finance':
-            case 'audit-logs':
-            case 'backup-restore':
-            case 'user-management':
-                show = role === 'admin'; // Only 'admin' can see these modules
-                break;
-            case 'attendance':
-                show = role === 'admin' || role === 'teacher'; // 'admin' and 'teacher'
-                break;
-            case 'teacher-attendance':
-                show = role === 'admin'; // 'admin'-only for teacher attendance management
-                break;
-            case 'announcements':
-            case 'calendar':
-                show = role === 'admin' || role === 'teacher' || role === 'student'; // All roles
-                break;
-            case 'reports':
-                show = role === 'admin' || role === 'teacher'; // 'admin' and 'teacher'
-                break;
-            default:
-                show = false;
-        }
-        if (show) {
-            navItem.classList.remove('hidden');
-        } else {
-            navItem.classList.add('hidden');
-        }
-    });
-
-    // Hide/show specific buttons or forms based on role (original script's logic)
+    // Specific buttons/forms visibility (from script1.js logic)
     const addStudentBtn = document.getElementById('addStudentBtn');
     if (addStudentBtn) {
-        if (role === 'admin' || role === 'teacher') { // MODIFIED: Allow teachers to add students
+        if (role === 'admin' || role === 'teacher') {
             addStudentBtn.classList.remove('hidden');
         } else {
             addStudentBtn.classList.add('hidden');
@@ -632,1293 +940,156 @@ function updateUIElementsForRole(role) {
         if (role === 'admin') {
             openAddInvoiceModalBtn.classList.remove('hidden');
         } else {
-            openAddInvoiceModal.classList.add('hidden');
+            openAddInvoiceModalBtn.classList.add('hidden');
         }
     }
 }
 
-
-// Check login status on load
-document.addEventListener('DOMContentLoaded', () => {
-    // Always show the login UI initially to prevent auto-login on refresh
-    showLoginUi();
-
-    // The commented-out block below is the original logic that caused auto-login
-    // if a session existed. For a clean login flow, it's better to always
-    // start at the login screen and only transition to the school site UI
-    // after a successful manual login.
-    /*
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-        if (session) {
-            localStorage.setItem('loggedIn', 'true');
-            localStorage.setItem('loggedInUser', JSON.stringify(session.user));
-            showSchoolSiteUi();
-        } else {
-            localStorage.removeItem('loggedIn');
-            localStorage.removeItem('loggedInUser');
-            showLoginUi(); // Ensure login UI is shown if no session
-        }
-    });
-    */
-});
-
-// --- Login UI Logic ---
-
-roleButtons.forEach(button => {
-    button.addEventListener('click', function() {
-        roleButtons.forEach(btn => btn.classList.remove('active'));
-        this.classList.add('active');
-        selectedRoleInput.value = this.dataset.role;
-    });
-});
-
-/**
- * Handles user login authentication with Supabase.
- * Verifies selected role against user_metadata.
- */
-async function handleLogin() {
-    const emailInput = document.getElementById('email').value.trim();
-    const passwordInput = document.getElementById('password').value.trim();
-    const selectedRole = document.getElementById('selectedRole').value;
-
-    // Ensure all fields are filled and a role is selected
-    if (!emailInput || !passwordInput || !selectedRole) {
-        alert('Please fill in all fields and select a role.');
-        return;
-    }
-
-    try {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: emailInput,
-            password: passwordInput
-        });
-
-        if (authError) {
-            alert('Login failed: ' + authError.message);
-            await addAuditLog(emailInput, 'Login Failed', 'Authentication', `Error: ${authError.message}`);
-            return;
-        }
-
-        if (authData.user) {
-            // Determine the user's actual role from Supabase metadata
-            // raw_user_meta_data is preferred as it's directly set by the application
-            const userRole = authData.user.raw_user_meta_data?.role || authData.user.app_metadata?.role || 'admin';
-
-            // Role mismatch check:
-            // An admin user can log in as any role (for testing/management purposes in a demo).
-            // Other roles must match their registered role.
-            if (userRole !== selectedRole && selectedRole !== 'admin') {
-                alert(`Login failed: You are registered as a ${userRole}, not a ${selectedRole}. Please select your correct role.`);
-                // Removed supabase.auth.signOut() here to keep only login functionality
-                await addAuditLog(emailInput, 'Login Failed (Role Mismatch)', 'Authentication', `User ${emailInput} attempted login as ${selectedRole}, but actual role is ${userRole}.`);
-                return;
-            }
-
-            // Proceed with login if roles match or if the selected role is 'admin' (allowing admin to impersonate/test)
-            localStorage.setItem('loggedIn', 'true');
-            localStorage.setItem('loggedInUser', JSON.stringify(authData.user)); // Store the full user object
-            alert('Login successful! Redirecting...');
-            await addAuditLog(authData.user.email, 'Logged In', 'Authentication', `Successful login for role: ${userRole}`);
-            showSchoolSiteUi(); // Only call this on successful login
-        } else {
-            // This case should ideally be covered by authError, but as a fallback
-            alert('Login failed: No user data returned.');
-            await addAuditLog(emailInput, 'Login Failed (No User Data)', 'Authentication', 'No user data returned from signInWithPassword.');
-        }
-    } catch (err) {
-        console.error('Unexpected error during login:', err);
-        alert('An unexpected error occurred: ' + err.message);
-        await addAuditLog(emailInput, 'Login Failed (Unexpected)', 'Authentication', `Unexpected error: ${err.message}`);
-    }
-}
-
-// Event listener for the login form submission
-if (loginForm) {
-    loginForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        await handleLogin();
-    });
-}
-
-// Forgot Password Modal Logic
-if (forgotPasswordLink) {
-    forgotPasswordLink.addEventListener('click', function(event) {
-        event.preventDefault();
-        forgotPasswordModal.classList.add('active');
-    });
-}
-
-if (closeForgotPasswordModal) {
-    closeForgotPasswordModal.addEventListener('click', function() {
-        forgotPasswordModal.classList.remove('active');
-        forgotPasswordForm.reset();
-    });
-}
-
-if (forgotPasswordModal) {
-    forgotPasswordModal.addEventListener('click', function(event) {
-        if (event.target === forgotPasswordModal) {
-            forgotPasswordModal.classList.remove('active');
-            forgotPasswordForm.reset();
-        }
-    });
-}
-
-if (forgotPasswordForm) {
-    forgotPasswordForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        const email = document.getElementById('forgotEmail').value;
-        if (!email) {
-            alert('Please enter your email address.');
-            return;
-        }
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
-            if (error) {
-                alert('Error sending reset link: ' + error.message);
-                await addAuditLog(email, 'Forgot Password Failed', 'Authentication', `Failed to send reset link: ${error.message}`);
-            } else {
-                alert('If an account with that email exists, a password reset link has been sent to ' + email + '.');
-                await addAuditLog(email, 'Forgot Password Initiated', 'Authentication', 'Password reset link sent.');
-            }
-        } catch (err) {
-            console.error('Unexpected error during password reset:', err);
-            alert('An unexpected error occurred: ' + err.message);
-        } finally {
-            forgotPasswordModal.classList.remove('active');
-            forgotPasswordForm.reset();
-        }
-    });
-}
-
-// --- School Site UI Logic ---
-
-// Removed Logout functionality
-/*
-if (logoutButton) {
-    logoutButton.addEventListener('click', async function() {
-        if (confirm('Are you sure you want to logout?')) {
-            const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-            try {
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
-
-                await addAuditLog(loggedInUser ? loggedInUser.email : 'Unknown', 'Logged Out', 'Authentication', 'User logged out');
-                localStorage.clear(); // Clear all local storage on logout
-                showLoginUi();
-                // Reset UI elements to default dashboard view
-                document.querySelectorAll('.module-content').forEach(m => m.classList.add('hidden'));
-                document.getElementById('dashboardMainContent').classList.remove('hidden');
-                document.getElementById('moduleTabs').classList.remove('hidden');
-                document.getElementById('modulesContainer').classList.add('hidden');
-                document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-                document.querySelector('.nav-item[data-module="dashboard"]').classList.add('active');
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelector('.tab[data-tab="dashboard"]').classList.add('active');
-            } catch (error) {
-                console.error('Error logging out:', error);
-                alert('Error logging out: ' + error.message);
-                await addAuditLog(loggedInUser ? loggedInUser.email : 'Unknown', 'Logout Failed', 'Authentication', `Error: ${error.message}`);
-            }
-        }
-    });
-}
-*/
-
-// Holiday Data (still static for now)
-const holidays = [
-    { date: '2023-01-01', name: 'New Year\'s Day' },
-    { date: '2023-01-16', name: 'Martin Luther King, Jr. Day' },
-    { date: '2023-02-20', name: 'Presidents\' Day' },
-    { date: '2023-03-17', name: 'St. Patrick\'s Day (Observed)' },
-    { date: '2023-04-07', name: 'Good Friday' },
-    { date: '2023-05-29', name: 'Memorial Day' },
-    { date: '2023-06-19', name: 'Juneteenth' },
-    { date: '2023-07-04', name: 'Independence Day' },
-    { date: '2023-09-04', name: 'Labor Day' },
-    { date: '2023-10-09', name: 'Columbus Day' },
-    { date: '2023-11-10', name: 'Veterans Day (Observed)' },
-    { date: '2023-11-23', name: 'Thanksgiving Day' },
-    { date: '2023-12-25', name: 'Christmas Day' },
-    { date: '2024-01-01', name: 'New Year\'s Day' },
-    { date: '2024-01-15', name: 'Martin Luther King, Jr. Day' },
-    { date: '2024-02-19', name: 'Presidents\' Day' },
-    { date: '2024-03-29', name: 'Good Friday' },
-    { date: '2024-05-27', name: 'Memorial Day' },
-    { date: '2024-06-19', name: 'Juneteenth' },
-    { date: '2024-07-04', name: 'Independence Day' },
-    { date: '2024-09-02', name: 'Labor Day' },
-    { date: '2024-10-14', name: 'Columbus Day' },
-    { date: '2024-11-11', name: 'Veterans Day' },
-    { date: '2024-11-28', name: 'Thanksgiving Day' },
-    { date: '2024-12-25', name: 'Christmas Day' },
-];
-
-// Initialize calendar
-var calendarEl = document.getElementById('calendar-full');
-var calendar;
-
-if (calendarEl && typeof FullCalendar !== 'undefined') {
-    calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        themeSystem: 'standard',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek'
-        },
-        editable: true,
-        selectable: true,
-        dayMaxEvents: true,
-        firstDay: 1,
-        eventColor: '#4F46E5',
-        eventTextColor: '#ffffff',
-        height: 'auto',
-        events: [
-            {
-                title: 'Parent-Teacher Meeting',
-                start: new Date().toISOString().split('T')[0],
-                backgroundColor: '#4F46E5',
-                borderColor: '#4F46E5'
-            },
-            {
-                title: 'Sports Day',
-                start: new Date(new Date().getTime() + 86400000 * 5).toISOString().split('T')[0],
-                backgroundColor: '#10B981',
-                borderColor: '#10B981'
-            },
-            {
-                title: 'End of Term Exams',
-                start: new Date(new Date().getTime() + 86400000 * 14).toISOString().split('T')[0],
-                end: new Date(new Date().getTime() + 86400000 * 18).toISOString().split('T')[0],
-                backgroundColor: '#F59E0B',
-                borderColor: '#F59E0B'
-            }
-        ],
-        eventSources: [
-            {
-                events: holidays.map(holiday => ({
-                    title: holiday.name,
-                    start: holiday.date,
-                    allDay: true,
-                    classNames: ['holiday'],
-                    display: 'background'
-                }))
-            }
-        ],
-        eventDidMount: function(info) {
-            info.el.title = info.event.title;
-        }
-    });
-    // Render calendar only if a session exists (this is fine as it doesn't log in the user)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-            calendar.render();
-        }
-    });
-}
-
-const holidayListContainer = document.getElementById('holidayList');
-function renderHolidayList() {
-    if (!holidayListContainer) return;
-    holidayListContainer.innerHTML = '';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const upcomingHolidays = holidays
-        .filter(holiday => new Date(holiday.date) >= today)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort ascending to show nearest first
-
-    if (upcomingHolidays.length === 0) {
-        holidayListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">No upcoming holidays.</p>';
-        return;
-    }
-
-    upcomingHolidays.slice(0, 5).forEach(holiday => {
-        const holidayDate = new Date(holiday.date);
-        const formattedDate = holidayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const listItem = document.createElement('div');
-        listItem.className = 'holiday-list-item module-card';
-        listItem.innerHTML = `
-            <span class="date">${formattedDate}</span>
-            <span class="name">${holiday.name}</span>
-            <i class="fas fa-star text-red-500"></i>
-        `;
-        holidayListContainer.appendChild(listItem);
-    });
-}
-
-/**
- * Shows the specified module content and updates active navigation/tab states.
- * Implements role-based access control for modules.
- * @param {string} moduleName - The name of the module to show (e.g., 'dashboard', 'students').
- */
-window.showModule = async function(moduleName) {
-    const dashboardMainContent = document.getElementById('dashboardMainContent');
-    const modulesContainer = document.getElementById('modulesContainer');
-    const moduleTabs = document.getElementById('moduleTabs');
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role || 'admin' : null;
+function showModule(moduleName) {
+    const userRole = localStorage.getItem('loggedInUserRole') || 'admin'; // Default to admin if not found
 
     const moduleAccess = {
         'dashboard': ['admin', 'teacher', 'student'],
-        'students': ['admin'],
+        'profile': ['admin', 'teacher', 'student'],
+        'announcements': ['admin', 'teacher', 'student'],
+        'calendar': ['admin', 'teacher', 'student'],
+        'reports': ['admin', 'teacher'],
+        'user-management': ['admin'],
+        'students': ['admin', 'teacher'], // Teachers can view/add students
         'teachers': ['admin'],
         'payroll': ['admin'],
         'finance': ['admin'],
         'attendance': ['admin', 'teacher'],
         'teacher-attendance': ['admin'],
-        'user-management': ['admin'],
-        'announcements': ['admin', 'teacher', 'student'],
         'audit-logs': ['admin'],
-        'backup-restore': ['admin'],
-        'calendar': ['admin', 'teacher', 'student'],
-        'reports': ['admin', 'teacher']
+        'backup-restore': ['admin']
     };
 
-    if (!userRole || !moduleAccess[moduleName] || !moduleAccess[moduleName].includes(userRole)) {
-        alert('Access Denied: You do not have permission to view this module.');
-        showModule('dashboard'); // Redirect to dashboard or a default accessible module
+    if (!moduleAccess[moduleName] || !moduleAccess[moduleName].includes(userRole)) {
+        showToast('Access Denied: You do not have permission to view this module.', 'error');
+        // Redirect to dashboard or a default accessible module
+        if (moduleName !== 'dashboard') { // Avoid infinite loop if dashboard is denied (shouldn't happen)
+            showModule('dashboard');
+        }
         return;
     }
 
     currentModuleTitle.textContent = moduleName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
-    document.querySelectorAll('.module-content').forEach(m => m.classList.add('hidden'));
-    dashboardMainContent.classList.add('hidden');
-    modulesContainer.classList.remove('hidden');
+    // Hide all module content and remove active states
+    modulesContainer.querySelectorAll('.module-content').forEach(content => content.classList.add('hidden'));
+    document.getElementById('dashboardMainContent').classList.add('hidden');
+    navItems.forEach(item => item.classList.remove('active'));
+    moduleTabs.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
 
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-
-    if (moduleName === 'dashboard') {
-        dashboardMainContent.classList.remove('hidden');
-        modulesContainer.classList.add('hidden');
-        moduleTabs.classList.remove('hidden');
-        document.querySelector('.tab[data-tab="dashboard"]').classList.add('active');
-        document.querySelector('.nav-item[data-module="dashboard"]').classList.add('active');
-        currentModuleTitle.textContent = 'Dashboard';
-        updateDashboardStats();
+    // Show the selected module content
+    const moduleContent = document.getElementById(`${moduleName}Module`);
+    if (moduleContent) {
+        moduleContent.classList.remove('hidden');
+        modulesContainer.classList.remove('hidden'); // Ensure modules container is visible
+    } else if (moduleName === 'dashboard') {
+        document.getElementById('dashboardMainContent').classList.remove('hidden');
+        modulesContainer.classList.add('hidden'); // Hide modules container for dashboard
     } else {
-        const moduleElement = document.getElementById(`${moduleName}Module`);
-        if (moduleElement) {
-            moduleElement.classList.remove('hidden');
-        }
-        const tabElement = document.querySelector(`.tab[data-tab="${moduleName}"]`);
-        if (tabElement) {
-            tabElement.classList.add('active');
-        }
-        const activeNavItem = document.querySelector(`.nav-item[data-module="${moduleName}"]`);
-        if (activeNavItem) {
-            activeNavItem.classList.add('active');
-        }
-
-        // Re-fetch data for the module when it's opened
-        switch (moduleName) {
-            case 'students': await fetchStudents(); break;
-            case 'teachers': await fetchTeachers(); break;
-            case 'payroll': await fetchPayrollEntries(); break;
-            case 'finance': await fetchInvoices(); break;
-            case 'attendance': await fetchAttendanceRecords(); populateStudentSelect(); break;
-            case 'teacher-attendance': await fetchTeacherAttendanceRecords(); populateTeacherSelect(); break;
-            case 'announcements': await fetchAnnouncements(); break;
-            case 'audit-logs': await fetchAuditLogs(); break;
-            case 'backup-restore': await fetchBackups(); break;
-            case 'user-management': await fetchProfiles(); break; // Fetch profiles for user management
-        }
-    }
-    if (notificationDropdown) notificationDropdown.classList.remove('active');
-    if (userDropdown) userDropdown.classList.remove('active');
-}
-
-document.querySelectorAll('.open-module, .tab, .nav-item, .user-dropdown-item').forEach(el => {
-    el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const moduleName = el.dataset.module || el.dataset.tab;
-        if (moduleName) {
-            showModule(moduleName);
-        }
-    });
-});
-
-function renderDropdownNotifications() {
-    if (!notificationList || !notificationCount || !newCount) return;
-    notificationList.innerHTML = "";
-    let unreadCount = 0;
-    notifications.slice(0, 3).forEach((notif) => {
-        if (notif.unread) unreadCount++;
-        const div = document.createElement("div");
-        div.className = "notification-item" + (notif.unread ? " unread" : "");
-        div.dataset.id = notif.id;
-        div.innerHTML = `
-            <div class="title">${notif.title}</div>
-            <p class="text-sm text-gray-600">${notif.description}</p>
-            <div class="time">${notif.time}</div>
-        `;
-        div.addEventListener("click", () => {
-            markNotificationRead(notif.id);
-        });
-        notificationList.appendChild(div);
-    });
-    notificationCount.textContent = unreadCount > 0 ? unreadCount : "";
-    newCount.textContent = unreadCount > 0 ? `${unreadCount} New` : "No new";
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-}
-
-function renderModalNotifications() {
-    if (!viewAllNotificationList) return;
-    viewAllNotificationList.innerHTML = "";
-    notifications.forEach((notif) => {
-        const div = document.createElement("div");
-        div.className = "view-all-notification" + (notif.unread ? " unread" : "");
-        div.dataset.id = notif.id;
-        div.innerHTML = `
-            <div class="title">${notif.title}</div>
-            <p class="text-sm text-gray-600">${notif.description}</p>
-            <div class="time">${notif.time}</div>
-        `;
-        div.addEventListener("click", () => {
-            markNotificationRead(notif.id);
-            div.classList.remove("unread");
-        });
-        viewAllNotificationList.appendChild(div);
-    });
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-}
-
-async function markNotificationRead(id) {
-    const notif = notifications.find((n) => n.id === id);
-    if (notif && notif.unread) {
-        notif.unread = false;
-        renderDropdownNotifications();
-        renderModalNotifications();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        await addAuditLog(loggedInUser?.email || 'System', 'Notification Read', 'Notifications', `Notification "${notif.title}" marked as read.`);
-    }
-}
-
-async function markAllAsRead() {
-    notifications.forEach((n) => (n.unread = false));
-    renderDropdownNotifications();
-    renderModalNotifications();
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    await addAuditLog(loggedInUser?.email || 'System', 'Notifications', 'Notifications', 'All notifications marked as read.');
-}
-
-if (notificationButton) {
-    notificationButton.addEventListener('click', function(event) {
-        event.stopPropagation();
-        notificationDropdown.classList.toggle('active');
-        if (userDropdown) userDropdown.classList.remove('active');
-    });
-}
-
-document.addEventListener('click', function(event) {
-    if (notificationDropdown && !notificationDropdown.contains(event.target) && (!notificationButton || !notificationButton.contains(event.target))) {
-        notificationDropdown.classList.remove('active');
-    }
-});
-
-if (markAllReadBtn) {
-    markAllReadBtn.addEventListener('click', markAllAsRead);
-}
-
-if (viewAllNotificationsLink) {
-    viewAllNotificationsLink.addEventListener('click', function(event) {
-        event.preventDefault();
-        if (notificationDropdown) notificationDropdown.classList.remove("active");
-        if (viewAllModal) viewAllModal.classList.add("active");
-        renderModalNotifications();
-    });
-}
-
-if (closeViewAllModal) {
-    closeViewAllModal.addEventListener("click", () => {
-        if (viewAllModal) viewAllModal.classList.remove("active");
-    });
-}
-
-if (viewAllModal) {
-    viewAllModal.addEventListener("click", (e) => {
-        if (e.target === viewAllModal) {
-            viewAllModal.classList.remove("active");
-        }
-    });
-}
-
-if (modalMarkAllReadBtn) {
-    modalMarkAllReadBtn.addEventListener("click", markAllAsRead);
-}
-
-// Payroll Module Specific JavaScript
-function renderPayrollTable() {
-    if (!payrollTableBody) return;
-    payrollTableBody.innerHTML = '';
-    if (payrollEntries.length === 0) {
-        payrollTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No payroll entries found.</td></tr>';
+        console.warn(`Module content for "${moduleName}" not found.`);
+        showToast(`Module "${moduleName}" content not found.`, 'warning');
+        showModule('dashboard'); // Fallback to dashboard
         return;
     }
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
 
-    payrollEntries.forEach(entry => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        let statusBgClass = '';
-        let statusTextColorClass = '';
-        switch (entry.status) {
-            case 'Paid': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
-            case 'Processing': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
-            case 'Pending': statusBgClass = 'bg-blue-100'; statusTextColorClass = 'text-blue-800'; break;
-        }
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${entry.period}</td>
-            <td class="py-3 px-4">${entry.staff_count}</td>
-            <td class="py-3 px-4">$${parseFloat(entry.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="py-3 px-4">
-                <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${entry.status}</span>
-            </td>
-            <td class="py-3 px-4">
-                <button class="text-blue-600 hover:text-blue-800 mr-3" title="View Details" onclick="alert('Viewing details for payroll ${entry.period}')">
-                    <i class="fas fa-eye"></i>
-                </button>
-                ${userRole === 'admin' ? `
-                <button class="text-red-600 hover:text-red-800" title="Download PDF" onclick="alert('Downloading PDF for payroll ${entry.period}')">
-                    <i class="fas fa-file-pdf"></i>
-                </button>
-                ` : ''}
-            </td>
-        `;
-        payrollTableBody.prepend(newRow);
-    });
-}
+    // Set active state for navigation and tabs
+    const activeNavItem = document.querySelector(`.nav-item[data-module="${moduleName}"]`);
+    if (activeNavItem) activeNavItem.classList.add('active');
+    const activeTab = document.querySelector(`.tab[data-tab="${moduleName}"]`);
+    if (activeTab) activeTab.classList.add('active');
 
-if (openPayrollModalBtn) {
-    openPayrollModalBtn.addEventListener('click', () => {
-        if (payrollModal) {
-            payrollModal.classList.remove('hidden');
-            payrollModal.style.display = 'flex';
-        }
-    });
-}
-
-if (closePayrollModalBtn) {
-    closePayrollModalBtn.addEventListener('click', () => {
-        if (payrollModal) {
-            payrollModal.classList.add('hidden');
-            payrollModal.style.display = 'none';
-        }
-        if (payrollForm) payrollForm.reset();
-    });
-}
-
-if (payrollModal) {
-    payrollModal.addEventListener('click', (e) => {
-        if (e.target === payrollModal) {
-            payrollModal.classList.add('hidden');
-            payrollModal.style.display = 'none';
-            if (payrollForm) payrollForm.reset();
-        }
-    });
-}
-
-if (payrollForm) {
-    payrollForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin') {
-            alert('Access Denied: Only admin can process payroll.');
-            return;
-        }
-
-        const periodInput = document.getElementById('payrollPeriod').value;
-        const staffCount = document.getElementById('staffCount').value;
-        const totalAmount = parseFloat(document.getElementById('totalAmount').value);
-
-        if (!periodInput || !staffCount || isNaN(totalAmount)) {
-            alert('Please fill in all fields correctly.');
-            return;
-        }
-
-        const [year, monthNum] = periodInput.split('-');
-        const date = new Date(year, monthNum - 1);
-        const formattedPeriod = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-
-        try {
-            const { data, error } = await supabase.from('payroll_entries').insert([
-                {
-                    period: formattedPeriod,
-                    staff_count: parseInt(staffCount),
-                    total_amount: totalAmount,
-                    status: 'Processing'
-                }
-            ]).select();
-
-            if (error) throw error;
-
-            alert('Payroll processing initiated successfully!');
-            await addAuditLog(loggedInUser?.email || 'admin', 'Processed Payroll', 'Payroll', `Processed payroll for ${formattedPeriod}, amount: $${totalAmount}`);
-            await fetchPayrollEntries();
-            if (payrollModal) {
-                payrollModal.classList.add('hidden');
-                payrollModal.style.display = 'none';
-            }
-            payrollForm.reset();
-        } catch (error) {
-            alert('Error processing payroll: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Payroll Processing Failed', 'Payroll', `Error: ${error.message}`);
-        }
-    });
-}
-
-// Finance Module Specific JavaScript
-function renderFinanceTable() {
-    if (!financeTableBody) return;
-    financeTableBody.innerHTML = '';
-    if (invoices.length === 0) {
-        financeTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No invoices found.</td></tr>';
-        return;
-    }
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    invoices.forEach(invoice => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        let statusBgClass = '';
-        let statusTextColorClass = '';
-        switch (invoice.status) {
-            case 'Paid': statusBgClass = 'bg-blue-100'; statusTextColorClass = 'text-blue-800'; break;
-            case 'Pending': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
-            case 'Overdue': statusBgClass = 'bg-red-100'; statusTextColorClass = 'text-red-800'; break;
-        }
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${invoice.invoice_number}</td>
-            <td class="py-3 px-4">${invoice.date}</td>
-            <td class="py-3 px-4">$${parseFloat(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="py-3 px-4">
-                <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${invoice.status}</span>
-            </td>
-            <td class="py-3 px-4">
-                <button class="text-blue-600 hover:text-blue-800 mr-3" title="View Details" onclick="alert('Viewing details for invoice ${invoice.invoice_number}')">
-                    <i class="fas fa-eye"></i>
-                </button>
-                ${userRole === 'admin' ? `
-                <button class="text-red-600 hover:text-red-800" title="Download PDF" onclick="alert('Downloading PDF for invoice ${invoice.invoice_number}')">
-                    <i class="fas fa-file-pdf"></i>
-                </button>
-                ` : ''}
-            </td>
-        `;
-        financeTableBody.prepend(newRow);
-    });
-}
-
-if (openAddInvoiceModalBtn) {
-    openAddInvoiceModalBtn.addEventListener('click', () => {
-        if (addInvoiceModal) {
-            addInvoiceModal.classList.remove('hidden');
-            addInvoiceModal.style.display = 'flex';
-        }
-    });
-}
-
-if (closeAddInvoiceModalBtn) {
-    closeAddInvoiceModalBtn.addEventListener('click', () => {
-        if (addInvoiceModal) {
-            addInvoiceModal.classList.add('hidden');
-            addInvoiceModal.style.display = 'none';
-        }
-        if (addInvoiceForm) addInvoiceForm.reset();
-    });
-}
-
-if (addInvoiceModal) {
-    addInvoiceModal.addEventListener('click', (e) => {
-        if (e.target === addInvoiceModal) {
-            addInvoiceModal.classList.add('hidden');
-            addInvoiceModal.style.display = 'none';
-            if (addInvoiceForm) addInvoiceForm.reset();
-        }
-    });
-}
-
-if (addInvoiceForm) {
-    addInvoiceForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin') {
-            alert('Access Denied: Only admin can add invoices.');
-            return;
-        }
-
-        const invoiceNumber = document.getElementById('invoiceNumber').value;
-        const invoiceDateInput = document.getElementById('invoiceDate').value;
-        const invoiceAmount = parseFloat(document.getElementById('invoiceAmount').value);
-        const invoiceStatus = document.getElementById('invoiceStatus').value;
-
-        if (!invoiceNumber || !invoiceDateInput || isNaN(invoiceAmount) || !invoiceStatus) {
-            alert('Please fill in all fields correctly.');
-            return;
-        }
-
-        try {
-            const { data, error } = await supabase.from('invoices').insert([
-                {
-                    invoice_number: invoiceNumber,
-                    date: invoiceDateInput,
-                    amount: invoiceAmount,
-                    status: invoiceStatus
-                }
-            ]).select();
-
-            if (error) throw error;
-
-            alert('Invoice added successfully!');
-            await addAuditLog(loggedInUser?.email || 'admin', 'Added Invoice', 'Finance', `Added invoice ${invoiceNumber} for $${invoiceAmount}`);
-            await fetchInvoices();
-            if (addInvoiceModal) {
-                addInvoiceModal.classList.add('hidden');
-                addInvoiceModal.style.display = 'none';
-            }
-            addInvoiceForm.reset();
-        } catch (error) {
-            alert('Error adding invoice: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Add Invoice Failed', 'Finance', `Error: ${error.message}`);
-        }
-    });
-}
-
-async function updateLoggedInUserName() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    if (loggedInUser && loggedInUserName) {
-        // Updated name retrieval logic: raw_user_meta_data first, then email
-        loggedInUserName.textContent = loggedInUser.raw_user_meta_data?.name || loggedInUser.email;
-    }
-}
-
-// User Dropdown Functionality
-if (userProfileToggle) {
-    userProfileToggle.addEventListener('click', function(event) {
-        event.stopPropagation();
-        if (userDropdown) userDropdown.classList.toggle('active');
-        if (notificationDropdown) notificationDropdown.classList.remove('active');
-    });
-}
-
-document.addEventListener('click', function(event) {
-    if (userDropdown && !userDropdown.contains(event.target) && (!userProfileToggle || !userProfileToggle.contains(event.target))) {
-        userDropdown.classList.remove('active');
-    }
-});
-
-// Student Search and Render Functionality
-function renderStudentTable(filteredStudents = students) {
-    if (!studentTableBody) return;
-    studentTableBody.innerHTML = '';
-    if (filteredStudents.length === 0) {
-        studentTableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-500">No students found matching your criteria.</td></tr>';
-        return;
-    }
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    filteredStudents.forEach(student => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        let statusBgClass = '';
-        let statusTextColorClass = '';
-        switch (student.status) {
-            case 'Active': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
-            case 'Inactive': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
-        }
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${student.id}</td>
-            <td class="py-3 px-4">${student.name}</td>
-            <td class="py-3 px-4">${student.father_name}</td>
-            <td class="py-3 px-4">${student.mother_name}</td>
-            <td class="py-3 px-4">${student.class}</td>
-            <td class="py-3 px-4">${student.roll_no}</td>
-            <td class="py-3 px-4">${student.aadhar_no}</td>
-            <td class="py-3 px-4">
-                <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${student.status}</span>
-            </td>
-            <td class="py-3 px-4 table-actions">
-                ${userRole === 'admin' ? `
-                <button class="text-blue-600 mr-3" title="Edit Student" onclick="editStudent('${student.id}')">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="text-red-600" title="Delete Student" onclick="deleteStudent('${student.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-                ` : ''}
-            </td>
-        `;
-        studentTableBody.appendChild(newRow);
-    });
-}
-
-function filterStudents() {
-    const rollQuery = searchRollInput.value.toLowerCase();
-    const classQuery = searchClassSelect.value.toLowerCase();
-
-    const filtered = students.filter(student => {
-        const rollMatch = student.roll_no.toLowerCase().includes(rollQuery);
-        const classMatch = classQuery === '' || student.class.toLowerCase() === classQuery;
-        return rollMatch && classMatch;
-    });
-    renderStudentTable(filtered);
-}
-
-if (applySearchButton) applySearchButton.addEventListener('click', filterStudents);
-if (searchRollInput) searchRollInput.addEventListener('keyup', filterStudents);
-if (searchClassSelect) searchClassSelect.addEventListener('change', filterStudents);
-
-// Teacher Render Functionality
-function renderTeacherTable() {
-    if (!teacherTableBody) return;
-    teacherTableBody.innerHTML = '';
-    if (teachers.length === 0) {
-        teacherTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No teachers found.</td></tr>';
-        return;
-    }
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    teachers.forEach(teacher => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${teacher.id}</td>
-            <td class="py-3 px-4">${teacher.name}</td>
-            <td class="py-3 px-4">${teacher.subject}</td>
-            <td class="py-3 px-4">${teacher.classes}</td>
-            <td class="py-3 px-4 table-actions">
-                ${userRole === 'admin' ? `
-                <button class="text-blue-600 mr-3" title="Edit Teacher" onclick="editTeacher('${teacher.id}')">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="text-red-600" title="Delete Teacher" onclick="deleteTeacher('${teacher.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-                ` : ''}
-            </td>
-        `;
-        teacherTableBody.appendChild(newRow);
-    });
-}
-
-// User Render Functionality (Now uses profiles data)
-function renderUserTable() {
-    if (!userTableBody) return;
-    userTableBody.innerHTML = '';
-    if (profiles.length === 0) {
-        userTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No user profiles found.</td></tr>';
-        return;
-    }
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    const currentUserRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    profiles.forEach(profile => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${profile.id}</td>
-            <td class="py-3 px-4">${profile.full_name || 'N/A'}</td>
-            <td class="py-3 px-4">${profile.email || 'N/A'}</td>
-            <td class="py-3 px-4">${profile.role || 'N/A'}</td>
-            <td class="py-3 px-4">${profile.status || 'N/A'}</td>
-            <td class="py-3 px-4 table-actions">
-                ${currentUserRole === 'admin' ? `
-                <button class="text-blue-600 mr-3" title="Edit User" onclick="editUser('${profile.id}')">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="text-red-600" title="Delete User" onclick="deleteUser('${profile.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-                ` : ''}
-            </td>
-        `;
-        userTableBody.appendChild(newRow);
-    });
-}
-
-// Announcement Render Functionality
-function renderAnnouncementTable() {
-    if (!announcementTableBody) return;
-    announcementTableBody.innerHTML = '';
-    if (announcements.length === 0) {
-        announcementTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No announcements found.</td></tr>';
-        return;
-    }
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    announcements.forEach(announcement => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        let statusBgClass = '';
-        let statusTextColorClass = '';
-        switch (announcement.status) {
-            case 'Active': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
-            case 'Archived': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
-        }
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${announcement.title}</td>
-            <td class="py-3 px-4">${announcement.content.substring(0, 50)}${announcement.content.length > 50 ? '...' : ''}</td>
-            <td class="py-3 px-4">${announcement.date_posted}</td>
-            <td class="py-3 px-4">
-                <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${announcement.status}</span>
-            </td>
-            <td class="py-3 px-4 table-actions">
-                ${userRole === 'admin' || userRole === 'teacher' ? `
-                <button class="text-blue-600 mr-3" title="Edit Announcement" onclick="editAnnouncement('${announcement.id}')">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="text-red-600" title="Delete Announcement" onclick="deleteAnnouncement('${announcement.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-                ` : ''}
-            </td>
-        `;
-        announcementTableBody.appendChild(newRow);
-    });
-}
-
-// Audit Log Render Functionality
-function renderAuditLogs() {
-    if (!auditLogTableBody) return;
-    auditLogTableBody.innerHTML = '';
-    if (auditLogs.length === 0) {
-        auditLogTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No audit logs found.</td></tr>';
-        return;
-    }
-    auditLogs.forEach(log => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${new Date(log.timestamp).toLocaleString()}</td>
-            <td class="py-3 px-4">${log.user_email}</td>
-            <td class="py-3 px-4">${log.action}</td>
-            <td class="py-3 px-4">${log.module}</td>
-            <td class="py-3 px-4">${log.details}</td>
-        `;
-        auditLogTableBody.appendChild(newRow);
-    });
-}
-
-// Backup Render Functionality
-function renderBackupTable() {
-    if (!backupTableBody) return;
-    backupTableBody.innerHTML = '';
-    if (backups.length === 0) {
-        backupTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No backups found.</td></tr>';
-        return;
-    }
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    backups.forEach(backup => {
-        const newRow = document.createElement('tr');
-        newRow.className = 'border-b hover:bg-gray-50';
-        newRow.innerHTML = `
-            <td class="py-3 px-4">${backup.backup_id}</td>
-            <td class="py-3 px-4">${new Date(backup.date).toLocaleString()}</td>
-            <td class="py-3 px-4">${backup.size}</td>
-            <td class="py-3 px-4">${backup.type}</td>
-            <td class="py-3 px-4 table-actions">
-                ${userRole === 'admin' ? `
-                <button class="text-blue-600 mr-3" title="Download Backup" onclick="alert('Downloading backup ${backup.backup_id}...')">
-                    <i class="fas fa-download"></i>
-                </button>
-                <button class="text-green-600 mr-3" title="Restore from this Backup" onclick="alert('Restoring from backup ${backup.backup_id}...')">
-                    <i class="fas fa-undo"></i>
-                </button>
-                <button class="text-red-600" title="Delete Backup" onclick="alert('Deleting backup ${backup.backup_id}...')">
-                    <i class="fas fa-trash"></i>
-                </button>
-                ` : ''}
-            </td>
-        `;
-        backupTableBody.appendChild(newRow);
-    });
-}
-
-// Student Attendance Module Functions
-function renderAttendanceTable(filteredAttendance = attendanceRecords) {
-    if (!attendanceTableBody) return;
-    attendanceTableBody.innerHTML = '';
-
-    let totalPresent = 0;
-    let totalAbsent = 0;
-    let uniqueStudents = new Set();
-
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    if (filteredAttendance.length === 0) {
-        attendanceTableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No attendance records found for the selected criteria.</td></tr>';
-    } else {
-        filteredAttendance.forEach(record => {
-            const student = students.find(s => s.id === record.student_id);
-            if (!student) return;
-
-            uniqueStudents.add(student.id);
-
-            if (record.status === 'Present') {
-                totalPresent++;
-            } else if (record.status === 'Absent') {
-                totalAbsent++;
-            }
-
-            const newRow = document.createElement('tr');
-            newRow.className = 'border-b hover:bg-gray-50';
-            let statusBgClass = '';
-            let statusTextColorClass = '';
-            switch (record.status) {
-                case 'Present': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
-                case 'Absent': statusBgClass = 'bg-red-100'; statusTextColorClass = 'text-red-800'; break;
-                case 'Leave': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
-            }
-            newRow.innerHTML = `
-                <td class="py-3 px-4">${student.name}</td>
-                <td class="py-3 px-4">${student.roll_no}</td>
-                <td class="py-3 px-4">${student.class}</td>
-                <td class="py-3 px-4">${record.date}</td>
-                <td class="py-3 px-4">
-                    <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${record.status}</span>
-                </td>
-                <td class="py-3 px-4">${record.remarks || '-'}</td>
-                <td class="py-3 px-4 table-actions">
-                    ${userRole === 'admin' || userRole === 'teacher' ? `
-                    <button class="text-blue-600 mr-3" title="Edit Attendance" onclick="editAttendance('${record.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="text-red-600" title="Delete Attendance" onclick="deleteAttendance('${record.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    ` : ''}
-                </td>
-            `;
-            attendanceTableBody.appendChild(newRow);
-        });
+    // Load data specific to the module
+    switch (moduleName) {
+        case 'dashboard':
+            loadDashboardData();
+            break;
+        case 'profile':
+            loadProfileData();
+            break;
+        case 'user-management':
+            loadUsers();
+            break;
+        case 'announcements':
+            loadAnnouncements();
+            break;
+        case 'students':
+            loadStudents();
+            break;
+        case 'teachers':
+            loadTeachers();
+            break;
+        case 'payroll':
+            loadPayrollEntries();
+            break;
+        case 'finance':
+            loadInvoices();
+            break;
+        case 'attendance':
+            loadStudentAttendance();
+            populateStudentAttendanceDropdown();
+            break;
+        case 'teacher-attendance':
+            loadTeacherAttendance();
+            populateTeacherAttendanceDropdown();
+            break;
+        case 'calendar':
+            loadCalendarEvents();
+            renderHolidayList(); // Ensure holidays are rendered
+            break;
+        case 'reports':
+            renderReportsCharts();
+            break;
+        case 'audit-logs':
+            loadAuditLogs();
+            break;
+        case 'backup-restore':
+            loadBackupHistory();
+            break;
+        default:
+            break;
     }
 
-    if (attendanceTotalStudents) attendanceTotalStudents.textContent = uniqueStudents.size;
-    if (attendanceTotalPresent) attendanceTotalPresent.textContent = totalPresent;
-    if (attendanceTotalAbsent) attendanceTotalAbsent.textContent = totalAbsent;
+    // Close dropdowns if open
+    if (notificationDropdown) notificationDropdown.classList.add('hidden');
+    if (userDropdown) userDropdown.classList.add('hidden');
 }
 
-function filterAttendance() {
-    const classFilter = attendanceClassFilter.value.toLowerCase();
-    const dateFilter = attendanceDateFilter.value;
-    const studentNameFilter = attendanceStudentNameFilter.value.toLowerCase();
-
-    const filtered = attendanceRecords.filter(record => {
-        const student = students.find(s => s.id === record.student_id);
-        if (!student) return false;
-
-        const classMatch = classFilter === '' || student.class.toLowerCase() === classFilter;
-        const dateMatch = dateFilter === '' || record.date === dateFilter;
-        const nameMatch = studentNameFilter === '' || student.name.toLowerCase().includes(studentNameFilter);
-
-        return classMatch && dateMatch && nameMatch;
-    });
-    renderAttendanceTable(filtered);
+// --- Initial Data Load (from script1.js, adapted) ---
+async function loadAllData() {
+    await Promise.all([
+        fetchStudents(),
+        fetchTeachers(),
+        fetchPayrollEntries(),
+        fetchInvoices(),
+        fetchAnnouncements(),
+        loadNotifications(), // Using script.js's loadNotifications
+        fetchAuditLogs(),
+        fetchBackups(), // Using script1.js's fetchBackups (simulated)
+        loadStudentAttendance(), // Using script.js's loadStudentAttendance
+        loadTeacherAttendance(), // Using script.js's loadTeacherAttendance
+        loadUsers(), // Using script.js's loadUsers (fetches profiles)
+        loadCalendarEvents() // Using script.js's loadCalendarEvents
+    ]);
+    updateDashboardStats();
+    renderHolidayList();
+    renderReportsCharts();
+    renderRecentActivity(); // Ensure recent activity is rendered
 }
 
-if (applyAttendanceFilter) applyAttendanceFilter.addEventListener('click', filterAttendance);
-if (attendanceClassFilter) attendanceClassFilter.addEventListener('change', filterAttendance);
-if (attendanceDateFilter) attendanceDateFilter.addEventListener('change', filterAttendance);
-if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('keyup', filterAttendance);
+// --- Dashboard Functions ---
 
-// Teacher Attendance Module Functions
-function renderTeacherAttendanceTable(filteredRecords = teacherAttendanceRecords) {
-    if (!teacherAttendanceTableBody) return;
-    teacherAttendanceTableBody.innerHTML = '';
-
-    let totalPresent = 0;
-    let totalAbsent = 0;
-    let uniqueTeachers = new Set();
-
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-
-    if (filteredRecords.length === 0) {
-        teacherAttendanceTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No teacher attendance records found for the selected criteria.</td></tr>';
-    } else {
-        filteredRecords.forEach(record => {
-            const teacher = teachers.find(t => t.id === record.teacher_id);
-            if (!teacher) return;
-
-            uniqueTeachers.add(teacher.id);
-
-            if (record.status === 'Present') {
-                totalPresent++;
-            } else if (record.status === 'Absent') {
-                totalAbsent++;
-            }
-
-            const newRow = document.createElement('tr');
-            newRow.className = 'border-b hover:bg-gray-50';
-            let statusBgClass = '';
-            let statusTextColorClass = '';
-            switch (record.status) {
-                case 'Present': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
-                case 'Absent': statusBgClass = 'bg-red-100'; statusTextColorClass = 'text-red-800'; break;
-                case 'Leave': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
-            }
-            newRow.innerHTML = `
-                <td class="py-3 px-4">${teacher.name}</td>
-                <td class="py-3 px-4">${teacher.subject}</td>
-                <td class="py-3 px-4">${record.date}</td>
-                <td class="py-3 px-4">
-                    <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${record.status}</span>
-                </td>
-                <td class="py-3 px-4">${record.remarks || '-'}</td>
-                <td class="py-3 px-4 table-actions">
-                    ${userRole === 'admin' ? `
-                    <button class="text-blue-600 mr-3" title="Edit Attendance" onclick="editTeacherAttendance('${record.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="text-red-600" title="Delete Attendance" onclick="deleteTeacherAttendance('${record.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    ` : ''}
-                </td>
-            `;
-            teacherAttendanceTableBody.appendChild(newRow);
-        });
-    }
-
-    if (teacherAttendanceTotalTeachers) teacherAttendanceTotalTeachers.textContent = uniqueTeachers.size;
-    if (teacherAttendanceTotalPresent) teacherAttendanceTotalPresent.textContent = totalPresent;
-    if (teacherAttendanceTotalAbsent) teacherAttendanceTotalAbsent.textContent = totalAbsent;
+async function loadDashboardData() {
+    // Data is already loaded by loadAllData, just update stats
+    updateDashboardStats();
+    initializeDashboardCalendar();
+    renderRecentActivity();
 }
 
-function filterTeacherAttendance() {
-    const subjectFilter = teacherAttendanceSubjectFilter.value.toLowerCase();
-    const dateFilter = teacherAttendanceDateFilter.value;
-    const nameFilter = teacherAttendanceNameFilter.value.toLowerCase();
-
-    const filtered = teacherAttendanceRecords.filter(record => {
-        const teacher = teachers.find(t => t.id === record.teacher_id);
-        if (!teacher) return false;
-
-        const subjectMatch = subjectFilter === '' || teacher.subject.toLowerCase() === subjectFilter;
-        const dateMatch = dateFilter === '' || record.date === dateFilter;
-        const nameMatch = nameFilter === '' || teacher.name.toLowerCase().includes(nameFilter);
-
-        return subjectMatch && dateMatch && nameMatch;
-    });
-    renderTeacherAttendanceTable(filtered);
-}
-
-if (applyTeacherAttendanceFilter) applyTeacherAttendanceFilter.addEventListener('click', filterTeacherAttendance);
-if (teacherAttendanceSubjectFilter) teacherAttendanceSubjectFilter.addEventListener('change', filterTeacherAttendance);
-if (teacherAttendanceDateFilter) teacherAttendanceDateFilter.addEventListener('change', filterTeacherAttendance);
-if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('keyup', filterTeacherAttendance);
-
-window.showAddTeacherAttendanceModal = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can mark teacher attendance.');
-        return;
-    }
-    teacherAttendanceModalTitle.textContent = 'Mark Teacher Attendance';
-    teacherAttendanceFormSubmitBtn.textContent = 'Mark Attendance';
-    document.getElementById('teacherAttendanceId').value = '';
-    teacherAttendanceForm.reset();
-    populateTeacherSelect();
-    document.getElementById('teacherAttendanceDate').valueAsDate = new Date();
-    if (teacherAttendanceModal) {
-        teacherAttendanceModal.classList.remove('hidden');
-        teacherAttendanceModal.style.display = 'flex';
-    }
-}
-
-window.editTeacherAttendance = function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can edit teacher attendance.');
-        return;
-    }
-    const record = teacherAttendanceRecords.find(r => r.id === id);
-    if (record) {
-        teacherAttendanceModalTitle.textContent = 'Edit Teacher Attendance';
-        teacherAttendanceFormSubmitBtn.textContent = 'Save Changes';
-        document.getElementById('teacherAttendanceId').value = record.id;
-        populateTeacherSelect(record.teacher_id);
-        document.getElementById('teacherAttendanceDate').value = record.date;
-        document.getElementById('teacherAttendanceStatus').value = record.status;
-        document.getElementById('teacherAttendanceRemarks').value = record.remarks;
-        if (teacherAttendanceModal) {
-            teacherAttendanceModal.classList.remove('hidden');
-            teacherAttendanceModal.style.display = 'flex';
-        }
-    }
-}
-
-window.deleteTeacherAttendance = async function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can delete teacher attendance records.');
-        return;
-    }
-    if (confirm('Are you sure you want to delete this teacher attendance record?')) {
-        try {
-            const { error } = await supabase.from('teacher_attendance_records').delete().eq('id', id);
-            if (error) throw error;
-
-            const deletedRecord = teacherAttendanceRecords.find(r => r.id === id);
-            const teacher = teachers.find(s => s.id === deletedRecord.teacher_id);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Deleted Teacher Attendance', 'Teacher Attendance', `Deleted attendance for ${teacher ? teacher.name : 'Unknown Teacher'} on ${deletedRecord.date}`);
-            alert('Teacher attendance record deleted successfully!');
-            await fetchTeacherAttendanceRecords();
-        } catch (error) {
-            alert('Error deleting teacher attendance record: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Delete Teacher Attendance Failed', 'Teacher Attendance', `Error: ${error.message}`);
-        }
-    }
-}
-
-function populateTeacherSelect(selectedTeacherId = '') {
-    if (!teacherAttendanceTeacherSelect) return;
-    teacherAttendanceTeacherSelect.innerHTML = '<option value="">Select Teacher</option>';
-    teachers.forEach(teacher => {
-        const option = document.createElement('option');
-        option.value = teacher.id;
-        option.textContent = `${teacher.name} (Subject: ${teacher.subject})`;
-        if (teacher.id === selectedTeacherId) {
-            option.selected = true;
-        }
-        teacherAttendanceTeacherSelect.appendChild(option);
-    });
-}
-
-// Update Dashboard Stats
 function updateDashboardStats() {
     if (totalStudentsCount) totalStudentsCount.textContent = students.length.toLocaleString();
     if (totalTeachersCount) totalTeachersCount.textContent = teachers.length.toLocaleString();
@@ -1926,31 +1097,83 @@ function updateDashboardStats() {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const currentMonthRevenue = invoices.filter(inv => {
-        const invDate = new Date(inv.date);
+        const invDate = new Date(inv.invoice_date); // Use invoice_date from script.js
         return inv.status === 'Paid' && invDate.getMonth() === currentMonth && invDate.getFullYear() === currentYear;
-    }).reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
+    }).reduce((sum, inv) => sum + (inv.amount || 0), 0);
     if (monthlyRevenue) monthlyRevenue.textContent = `$${currentMonthRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     if (upcomingEventsCount && calendar) {
         const today = new Date();
         today.setHours(0,0,0,0);
-        const upcomingEvents = calendar.getEvents().filter(event => {
-            if (event.classNames.includes('holiday')) {
-                return new Date(event.start) >= today;
-            }
-            return event.end ? new Date(event.end) >= today : new Date(event.start) >= today;
+        const upcoming = calendar.getEvents().filter(event => {
+            // Check if event.start is a valid date and is today or in the future
+            return event.start && new Date(event.start) >= today;
         });
-        upcomingEventsCount.textContent = upcomingEvents.length.toLocaleString();
+        upcomingEventsCount.textContent = upcoming.length.toLocaleString();
     } else if (upcomingEventsCount) {
         upcomingEventsCount.textContent = 'N/A';
     }
 }
 
-// Render Recent Activity
+function displayRecentActivity(activities) { // From script.js, adapted
+    if (!recentActivityList) return;
+    recentActivityList.innerHTML = '';
+    if (activities.length === 0) {
+        recentActivityList.innerHTML = '<p class="text-gray-500">No recent activity.</p>';
+        return;
+    }
+    activities.forEach(activity => {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'flex items-center space-x-3 p-3 bg-gray-50 rounded-lg';
+        activityItem.innerHTML = `
+            <div class="icon-wrapper bg-blue-100 text-blue-600 text-sm">
+                <i class="fas fa-info"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-800">${activity.action} in ${activity.module}</p>
+                <p class="text-xs text-gray-500">by ${activity.user_email || 'System'} at ${new Date(activity.timestamp).toLocaleString()}</p>
+            </div>
+        `;
+        recentActivityList.appendChild(activityItem);
+    });
+}
+
+function initializeDashboardCalendar() { // From script.js, adapted
+    const calendarEl = document.getElementById('calendar');
+    if (calendarEl) {
+        const dashboardCalendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: schoolEvents.map(event => ({
+                title: event.title,
+                start: event.event_date,
+                description: event.description
+            })),
+            eventDidMount: function(info) {
+                info.el.setAttribute('title', info.event.extendedProps.description || info.event.title);
+            }
+        });
+        dashboardCalendar.render();
+    }
+}
+
+// Render Recent Activity (from script1.js, adapted)
 function renderRecentActivity() {
     if (!recentActivityList) return;
     recentActivityList.innerHTML = '';
-    auditLogs.slice(0, 3).forEach(log => {
+    // Use the global auditLogs array
+    const recentLogs = auditLogs.slice(0, 3); // Display last 3 activities
+
+    if (recentLogs.length === 0) {
+        recentActivityList.innerHTML = '<p class="text-gray-500">No recent activity.</p>';
+        return;
+    }
+
+    recentLogs.forEach(log => {
         const div = document.createElement('div');
         div.className = 'flex items-start space-x-3 animate-slideInFromLeft';
         let iconClass = 'fas fa-info-circle';
@@ -1981,7 +1204,1573 @@ function renderRecentActivity() {
     });
 }
 
-// Reports Module Charts
+// --- Profile Module Functions ---
+
+async function loadProfileData() {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        showToast('User not logged in.', 'error');
+        return;
+    }
+    const userEmail = user.email;
+
+    const userData = await fetchUserData(userEmail);
+
+    if (!userData) {
+        showToast('Error loading profile data: User record not found in database.', 'error');
+        return;
+    }
+
+    if (fullNameInput) fullNameInput.value = userData.full_name || '';
+    if (profileEmailInput) profileEmailInput.value = userData.email || '';
+    if (roleSelect) roleSelect.value = userData.role || '';
+    if (phoneInput) phoneInput.value = userData.phone || '';
+    if (addressTextarea) addressTextarea.value = userData.address || '';
+    if (profilePicturePreview) profilePicturePreview.src = userData.profile_picture_url || 'https://via.placeholder.com/96';
+}
+
+async function profileFormSubmitHandler(event) {
+    event.preventDefault();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        showToast('User not logged in.', 'error');
+        return;
+    }
+    const userId = user.id;
+
+    const updatedProfile = {
+        full_name: fullNameInput.value,
+        phone: phoneInput.value,
+        address: addressTextarea.value,
+    };
+
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update(updatedProfile)
+            .eq('id', userId)
+            .select();
+
+        if (error) throw error;
+
+        showToast('Profile updated successfully!', 'success');
+        if (data && data[0] && data[0].full_name && loggedInUserName) {
+            localStorage.setItem('loggedInUserName', data[0].full_name.split(' ')[0]);
+            loggedInUserName.textContent = data[0].full_name.split(' ')[0];
+        }
+        await addAuditLog(user.email, 'Updated Profile', 'Profile', `Updated profile for ${updatedProfile.full_name}`);
+    } catch (error) {
+        console.error('Error updating profile:', error.message);
+        showToast(`Error updating profile: ${error.message}`, 'error');
+        await addAuditLog(user.email, 'Update Profile Failed', 'Profile', `Failed to update profile: ${error.message}`);
+    }
+}
+
+async function profilePictureChangeHandler(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        showToast('User not logged in.', 'error');
+        return;
+    }
+    const userId = user.id;
+
+    const filePath = `${userId}/${file.name}`;
+    try {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('profile_pictures')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+            .from('profile_pictures')
+            .getPublicUrl(filePath);
+
+        const publicUrl = publicUrlData.publicUrl;
+
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ profile_picture_url: publicUrl })
+            .eq('id', userId);
+
+        if (updateError) throw updateError;
+
+        if (profilePicturePreview) profilePicturePreview.src = publicUrl;
+        showToast('Profile picture updated successfully!', 'success');
+        await addAuditLog(user.email, 'Updated Profile Picture', 'Profile', `Updated profile picture for user ${user.email}`);
+    } catch (error) {
+        console.error('Error uploading profile picture:', error.message);
+        showToast(`Error uploading profile picture: ${error.message}`, 'error');
+        await addAuditLog(user.email, 'Update Profile Picture Failed', 'Profile', `Failed to update profile picture: ${error.message}`);
+    }
+}
+
+// --- User Management Functions ---
+
+async function loadUsers() {
+    profiles = await fetchData('profiles'); // Use 'profiles' table
+    displayUsers();
+}
+
+function displayUsers() {
+    if (!userTableBody) return;
+    userTableBody.innerHTML = '';
+    if (profiles.length === 0) {
+        userTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No users found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    profiles.forEach(user => {
+        const row = userTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${user.id}</td>
+            <td class="py-3 px-4">${user.full_name || 'N/A'}</td>
+            <td class="py-3 px-4">${user.email || 'N/A'}</td>
+            <td class="py-3 px-4">${user.role || 'N/A'}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                    ${user.status}
+                </span>
+            </td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' ? `
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit User" onclick="editUser('${user.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete User" onclick="deleteUser('${user.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+function showAddUserForm() {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can add users.', 'error');
+        return;
+    }
+    if (userModalTitle) userModalTitle.textContent = 'Add New User';
+    if (userFormSubmitBtn) userFormSubmitBtn.textContent = 'Add User';
+    if (userForm) userForm.reset();
+    if (userIdInput) userIdInput.value = '';
+    if (userPasswordInput) userPasswordInput.setAttribute('required', 'required');
+    if (userModal) toggleModal(userModal, true);
+}
+
+async function editUser(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can edit users.', 'error');
+        return;
+    }
+    const user = profiles.find(u => u.id === id);
+    if (user) {
+        if (userModalTitle) userModalTitle.textContent = 'Edit User';
+        if (userFormSubmitBtn) userFormSubmitBtn.textContent = 'Save Changes';
+        if (userIdInput) userIdInput.value = user.id;
+        if (userFullNameInput) userFullNameInput.value = user.full_name;
+        if (userEmailInput) userEmailInput.value = user.email;
+        if (userRoleSelect) userRoleSelect.value = user.role;
+        if (userStatusSelect) userStatusSelect.value = user.status;
+        if (userPasswordInput) {
+            userPasswordInput.value = '';
+            userPasswordInput.removeAttribute('required');
+        }
+        if (userModal) toggleModal(userModal, true);
+    }
+}
+
+async function userFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can manage user accounts.', 'error');
+        return;
+    }
+
+    const id = userIdInput.value;
+    const email = userEmailInput.value;
+    const password = userPasswordInput.value;
+    const fullName = userFullNameInput.value;
+    const role = userRoleSelect.value;
+    const status = userStatusSelect.value;
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+
+    if (id) {
+        // Update existing user in 'profiles' table
+        const updatedUser = await updateData('profiles', { full_name: fullName, email, role, status }, id);
+        if (updatedUser) {
+            profiles = profiles.map(u => u.id === id ? updatedUser : u);
+            displayUsers();
+            toggleModal(userModal, false);
+            await addAuditLog(loggedInUserEmail, 'Updated User', 'User Management', `Updated user: ${fullName} (ID: ${id})`);
+        }
+    } else {
+        // Add new user via Supabase Auth and then to 'profiles' table
+        try {
+            // IMPORTANT: Direct client-side creation of users with specific roles
+            // or admin-level operations (like setting email_confirm: true)
+            // should ideally be done via a secure backend function (e.g., Supabase Edge Function)
+            // that uses the `service_role` key. Exposing the `service_role` key client-side
+            // is a severe security risk. This is for demonstration purposes only.
+            const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // Replace with your actual Service Role Key in a real app
+
+            if (SERVICE_ROLE_KEY === 'YOUR_SERVICE_ROLE_KEY' || !SERVICE_ROLE_KEY) {
+                showToast('Service Role Key is not configured. Cannot create user with specific role from client-side.', 'error');
+                await addAuditLog(loggedInUserEmail, 'Add User Failed', 'User Management', 'Service Role Key not configured for user creation.');
+                return;
+            }
+
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: email,
+                password: password,
+                email_confirm: true, // Auto-confirm email for admin-created users
+                user_metadata: {
+                    full_name: fullName,
+                    role: role
+                }
+            });
+
+            if (authError) {
+                if (authError.message.includes('User already registered')) {
+                    showToast('User with this email already exists in authentication system. Please use a different email or reset password.', 'warning');
+                } else {
+                    throw authError;
+                }
+                await addAuditLog(loggedInUserEmail, 'Add User Failed', 'User Management', `Auth signup failed: ${authError.message}`);
+                return;
+            }
+
+            if (!authData.user) {
+                throw new Error('Supabase Auth signup succeeded but no user object was returned.');
+            }
+
+            const addedUser = await insertData('profiles', {
+                id: authData.user.id,
+                full_name: fullName,
+                email: email,
+                role: role,
+                status: status
+            });
+
+            if (addedUser) {
+                profiles.push(addedUser);
+                displayUsers();
+                toggleModal(userModal, false);
+                showToast('User created and added successfully!', 'success');
+                await addAuditLog(loggedInUserEmail, 'Added User', 'User Management', `Added new user: ${fullName} (ID: ${addedUser.id})`);
+            } else {
+                console.error('Failed to add user to public.profiles table after auth signup. Auth user created, but database record missing.');
+                showToast('User created in Auth, but failed to add to user list. Please check database.', 'warning');
+                await addAuditLog(loggedInUserEmail, 'Add User Failed', 'User Management', 'Auth user created, but profile record missing.');
+            }
+
+        } catch (error) {
+            console.error('Error adding new user:', error.message);
+            showToast(`Error adding user: ${error.message}`, 'error');
+            await addAuditLog(loggedInUserEmail, 'Add User Failed', 'User Management', `Unexpected error: ${error.message}`);
+        }
+    }
+}
+
+async function deleteUser(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can delete users.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this user? This will also delete their authentication record.')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        try {
+            const deletedProfile = profiles.find(p => p.id === id);
+
+            // Delete from profiles table first
+            const success = await deleteData('profiles', id);
+            if (success) {
+                // IMPORTANT: Direct client-side deletion of auth users is not allowed for security.
+                // You would typically call a Supabase Edge Function or a backend API endpoint
+                // that has the necessary service_role key to perform this action.
+                const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // Replace with your actual Service Role Key in a real app
+
+                if (SERVICE_ROLE_KEY === 'YOUR_SERVICE_ROLE_KEY' || !SERVICE_ROLE_KEY) {
+                    showToast('Service Role Key is not configured. Cannot delete user from auth.users table from client-side.', 'warning');
+                    await addAuditLog(loggedInUserEmail, 'Delete User Failed', 'User Management', `Auth user not deleted for ${deletedProfile?.full_name || id} due to missing service role key.`);
+                } else {
+                    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(id);
+                    if (authDeleteError) throw authDeleteError;
+                }
+
+                profiles = profiles.filter(u => u.id !== id);
+                displayUsers();
+                showToast('User and authentication record deleted successfully!', 'success');
+                await addAuditLog(loggedInUserEmail, 'Deleted User', 'User Management', `Deleted user: ${deletedProfile?.full_name || id}`);
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error.message);
+            showToast(`Error deleting user: ${error.message}`, 'error');
+            await addAuditLog(loggedInUserEmail, 'Delete User Failed', 'User Management', `Error: ${error.message}`);
+        }
+    }
+}
+
+// --- Announcements Module Functions ---
+
+async function loadAnnouncements() {
+    announcements = await fetchData('announcements');
+    displayAnnouncements();
+}
+
+function displayAnnouncements() {
+    if (!announcementTableBody) return;
+    announcementTableBody.innerHTML = '';
+    if (announcements.length === 0) {
+        announcementTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No announcements found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    announcements.forEach(announcement => {
+        const row = announcementTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${announcement.title}</td>
+            <td class="py-3 px-4">${announcement.content.substring(0, 50)}${announcement.content.length > 50 ? '...' : ''}</td>
+            <td class="py-3 px-4">${new Date(announcement.date_posted).toLocaleDateString()}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${announcement.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                    ${announcement.status}
+                </span>
+            </td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' || currentUserRole === 'teacher' ? `
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit Announcement" onclick="editAnnouncement('${announcement.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete Announcement" onclick="deleteAnnouncement('${announcement.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+function showAddAnnouncementModal() {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can add announcements.', 'error');
+        return;
+    }
+    if (announcementModalTitle) announcementModalTitle.textContent = 'Add New Announcement';
+    if (announcementFormSubmitBtn) announcementFormSubmitBtn.textContent = 'Publish Announcement';
+    if (announcementForm) announcementForm.reset();
+    if (announcementIdInput) announcementIdInput.value = '';
+    if (announcementModal) toggleModal(announcementModal, true);
+}
+
+function editAnnouncement(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can edit announcements.', 'error');
+        return;
+    }
+    const announcement = announcements.find(a => a.id === id);
+    if (announcement) {
+        if (announcementModalTitle) announcementModalTitle.textContent = 'Edit Announcement';
+        if (announcementFormSubmitBtn) announcementFormSubmitBtn.textContent = 'Save Changes';
+        if (announcementIdInput) announcementIdInput.value = announcement.id;
+        if (announcementTitleInput) announcementTitleInput.value = announcement.title;
+        if (announcementContentTextarea) announcementContentTextarea.value = announcement.content;
+        if (announcementStatusSelect) announcementStatusSelect.value = announcement.status;
+        if (announcementModal) toggleModal(announcementModal, true);
+    }
+}
+
+async function announcementFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can manage announcements.', 'error');
+        return;
+    }
+
+    const id = announcementIdInput.value;
+    const newAnnouncement = {
+        title: announcementTitleInput.value,
+        content: announcementContentTextarea.value,
+        date_posted: new Date().toISOString(),
+        status: announcementStatusSelect.value,
+    };
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    let auditAction = '';
+    let auditDetails = '';
+
+    if (id) {
+        const updatedAnnouncement = await updateData('announcements', newAnnouncement, id);
+        if (updatedAnnouncement) {
+            announcements = announcements.map(a => a.id === id ? updatedAnnouncement : a);
+            displayAnnouncements();
+            toggleModal(announcementModal, false);
+            auditAction = 'Updated Announcement';
+            auditDetails = `Updated: "${newAnnouncement.title}" (ID: ${id})`;
+        }
+    } else {
+        const addedAnnouncement = await insertData('announcements', newAnnouncement);
+        if (addedAnnouncement) {
+            announcements.push(addedAnnouncement);
+            displayAnnouncements();
+            toggleModal(announcementModal, false);
+            auditAction = 'Published Announcement';
+            auditDetails = `Published: "${newAnnouncement.title}"`;
+        }
+    }
+    if (auditAction) {
+        await addAuditLog(loggedInUserEmail, auditAction, 'Announcements', auditDetails);
+    }
+}
+
+async function deleteAnnouncement(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can delete announcements.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this announcement?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        const deletedAnnouncement = announcements.find(a => a.id === id);
+        const success = await deleteData('announcements', id);
+        if (success) {
+            announcements = announcements.filter(a => a.id !== id);
+            displayAnnouncements();
+            await addAuditLog(loggedInUserEmail, 'Deleted Announcement', 'Announcements', `Deleted: "${deletedAnnouncement.title}" (ID: ${deletedAnnouncement.id})`);
+        }
+    }
+}
+
+// --- Students Module Functions ---
+
+async function loadStudents() {
+    students = await fetchData('students');
+    displayStudents(students);
+}
+
+function displayStudents(filteredStudents) {
+    if (!studentTableBody) return;
+    studentTableBody.innerHTML = '';
+    if (filteredStudents.length === 0) {
+        studentTableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-500">No students found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    filteredStudents.forEach(student => {
+        const row = studentTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${student.id}</td>
+            <td class="py-3 px-4">${student.full_name}</td>
+            <td class="py-3 px-4">${student.father_name}</td>
+            <td class="py-3 px-4">${student.mother_name}</td>
+            <td class="py-3 px-4">${student.class}</td>
+            <td class="py-3 px-4">${student.roll_no}</td>
+            <td class="py-3 px-4">${student.aadhar_no}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${student.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                    ${student.status}
+                </span>
+            </td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' || currentUserRole === 'teacher' ? `
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit Student" onclick="editStudent('${student.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete Student" onclick="deleteStudent('${student.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+function showAddStudentForm() {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can add students.', 'error');
+        return;
+    }
+    if (studentModalTitle) studentModalTitle.textContent = 'Add New Student';
+    if (studentFormSubmitBtn) studentFormSubmitBtn.textContent = 'Add Student';
+    if (studentForm) studentForm.reset();
+    if (studentIdInput) studentIdInput.value = '';
+    if (studentModal) toggleModal(studentModal, true);
+}
+
+function editStudent(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can edit students.', 'error');
+        return;
+    }
+    const student = students.find(s => s.id === id);
+    if (student) {
+        if (studentModalTitle) studentModalTitle.textContent = 'Edit Student';
+        if (studentFormSubmitBtn) studentFormSubmitBtn.textContent = 'Save Changes';
+        if (studentIdInput) studentIdInput.value = student.id;
+        if (studentFullNameInput) studentFullNameInput.value = student.full_name;
+        if (studentFatherNameInput) studentFatherNameInput.value = student.father_name;
+        if (studentMotherNameInput) studentMotherNameInput.value = student.mother_name;
+        if (studentClassSelect) studentClassSelect.value = student.class;
+        if (studentRollNoInput) studentRollNoInput.value = student.roll_no;
+        if (studentAadharNoInput) studentAadharNoInput.value = student.aadhar_no;
+        if (studentEmailInput) studentEmailInput.value = student.email || '';
+        if (studentPhoneInput) studentPhoneInput.value = student.phone || '';
+        if (studentStatusSelect) studentStatusSelect.value = student.status;
+        if (studentModal) toggleModal(studentModal, true);
+    }
+}
+
+async function studentFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can manage student data.', 'error');
+        return;
+    }
+
+    const id = studentIdInput.value;
+    const newStudent = {
+        full_name: studentFullNameInput.value,
+        father_name: studentFatherNameInput.value,
+        mother_name: studentMotherNameInput.value,
+        class: studentClassSelect.value,
+        roll_no: studentRollNoInput.value,
+        aadhar_no: studentAadharNoInput.value,
+        email: studentEmailInput.value,
+        phone: studentPhoneInput.value,
+        status: studentStatusSelect.value,
+    };
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    let auditAction = '';
+    let auditDetails = '';
+
+    if (id) {
+        const updatedStudent = await updateData('students', newStudent, id);
+        if (updatedStudent) {
+            students = students.map(s => s.id === id ? updatedStudent : s);
+            displayStudents(students);
+            toggleModal(studentModal, false);
+            auditAction = 'Updated Student';
+            auditDetails = `Updated student: ${newStudent.full_name} (ID: ${id})`;
+        }
+    } else {
+        const addedStudent = await insertData('students', newStudent);
+        if (addedStudent) {
+            students.push(addedStudent);
+            displayStudents(students);
+            toggleModal(studentModal, false);
+            auditAction = 'Added Student';
+            auditDetails = `Added new student: ${newStudent.full_name} (ID: ${addedStudent.id})`;
+        }
+    }
+    if (auditAction) {
+        await addAuditLog(loggedInUserEmail, auditAction, 'Students', auditDetails);
+    }
+}
+
+async function deleteStudent(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can delete students.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this student?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        const deletedStudent = students.find(s => s.id === id);
+        const success = await deleteData('students', id);
+        if (success) {
+            students = students.filter(s => s.id !== id);
+            displayStudents(students);
+            await addAuditLog(loggedInUserEmail, 'Deleted Student', 'Students', `Deleted student: ${deletedStudent.full_name} (ID: ${deletedStudent.id})`);
+        }
+    }
+}
+
+function filterStudents() {
+    const rollNoFilter = searchRollInput.value.toLowerCase();
+    const classFilter = searchClassSelect.value;
+
+    const filtered = students.filter(student => {
+        const matchesRoll = student.roll_no.toLowerCase().includes(rollNoFilter);
+        const matchesClass = classFilter === '' || student.class === classFilter;
+        return matchesRoll && matchesClass;
+    });
+    displayStudents(filtered);
+}
+
+// --- Teachers Module Functions ---
+
+async function loadTeachers() {
+    teachers = await fetchData('teachers');
+    displayTeachers(teachers);
+}
+
+function displayTeachers(filteredTeachers) {
+    if (!teacherTableBody) return;
+    teacherTableBody.innerHTML = '';
+    if (filteredTeachers.length === 0) {
+        teacherTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No teachers found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    filteredTeachers.forEach(teacher => {
+        const row = teacherTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${teacher.id}</td>
+            <td class="py-3 px-4">${teacher.full_name}</td>
+            <td class="py-3 px-4">${teacher.subject}</td>
+            <td class="py-3 px-4">${teacher.classes}</td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' ? `
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit Teacher" onclick="editTeacher('${teacher.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete Teacher" onclick="deleteTeacher('${teacher.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+function showAddTeacherForm() {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can add teachers.', 'error');
+        return;
+    }
+    if (teacherModalTitle) teacherModalTitle.textContent = 'Add New Teacher';
+    if (teacherFormSubmitBtn) teacherFormSubmitBtn.textContent = 'Add Teacher';
+    if (teacherForm) teacherForm.reset();
+    if (teacherIdInput) teacherIdInput.value = '';
+    if (teacherModal) toggleModal(teacherModal, true);
+}
+
+function editTeacher(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can edit teachers.', 'error');
+        return;
+    }
+    const teacher = teachers.find(t => t.id === id);
+    if (teacher) {
+        if (teacherModalTitle) teacherModalTitle.textContent = 'Edit Teacher';
+        if (teacherFormSubmitBtn) teacherFormSubmitBtn.textContent = 'Save Changes';
+        if (teacherIdInput) teacherIdInput.value = teacher.id;
+        if (teacherFullNameInput) teacherFullNameInput.value = teacher.full_name;
+        if (teacherSubjectSelect) teacherSubjectSelect.value = teacher.subject;
+        if (teacherEmailInput) teacherEmailInput.value = teacher.email;
+        if (teacherClassesInput) teacherClassesInput.value = teacher.classes;
+        if (teacherModal) toggleModal(teacherModal, true);
+    }
+}
+
+async function teacherFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can manage teacher data.', 'error');
+        return;
+    }
+
+    const id = teacherIdInput.value;
+    const newTeacher = {
+        full_name: teacherFullNameInput.value,
+        subject: teacherSubjectSelect.value,
+        email: teacherEmailInput.value,
+        classes: teacherClassesInput.value,
+    };
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    let auditAction = '';
+    let auditDetails = '';
+
+    if (id) {
+        const updatedTeacher = await updateData('teachers', newTeacher, id);
+        if (updatedTeacher) {
+            teachers = teachers.map(t => t.id === id ? updatedTeacher : t);
+            displayTeachers(teachers);
+            toggleModal(teacherModal, false);
+            auditAction = 'Updated Teacher';
+            auditDetails = `Updated teacher: ${newTeacher.full_name} (ID: ${id})`;
+        }
+    } else {
+        const addedTeacher = await insertData('teachers', newTeacher);
+        if (addedTeacher) {
+            teachers.push(addedTeacher);
+            displayTeachers(teachers);
+            toggleModal(teacherModal, false);
+            auditAction = 'Added Teacher';
+            auditDetails = `Added new teacher: ${newTeacher.full_name} (ID: ${addedTeacher.id})`;
+        }
+    }
+    if (auditAction) {
+        await addAuditLog(loggedInUserEmail, auditAction, 'Teachers', auditDetails);
+    }
+}
+
+async function deleteTeacher(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can delete teachers.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this teacher?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        const deletedTeacher = teachers.find(t => t.id === id);
+        const success = await deleteData('teachers', id);
+        if (success) {
+            teachers = teachers.filter(t => t.id !== id);
+            displayTeachers(teachers);
+            await addAuditLog(loggedInUserEmail, 'Deleted Teacher', 'Teachers', `Deleted teacher: ${deletedTeacher.full_name} (ID: ${deletedTeacher.id})`);
+        }
+    }
+}
+
+// --- Payroll Module Functions ---
+
+async function loadPayrollEntries() {
+    payrollEntries = await fetchData('payroll');
+    displayPayrollEntries();
+}
+
+function displayPayrollEntries() {
+    if (!payrollTableBody) return;
+    payrollTableBody.innerHTML = '';
+    if (payrollEntries.length === 0) {
+        payrollTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No payroll entries found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    payrollEntries.forEach(entry => {
+        const row = payrollTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        let statusBgClass = '';
+        let statusTextColorClass = '';
+        switch (entry.status) {
+            case 'Processed': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
+            case 'Processing': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
+            case 'Pending': statusBgClass = 'bg-blue-100'; statusTextColorClass = 'text-blue-800'; break;
+        }
+        row.innerHTML = `
+            <td class="py-3 px-4">${entry.period}</td>
+            <td class="py-3 px-4">${entry.staff_count}</td>
+            <td class="py-3 px-4">$${parseFloat(entry.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${entry.status}</span>
+            </td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' ? `
+                <button class="text-red-600 hover:text-red-800" title="Delete Payroll Entry" onclick="deletePayrollEntry('${entry.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+async function payrollFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can process payroll.', 'error');
+        return;
+    }
+
+    const periodInput = payrollPeriodInput.value;
+    const staffCount = parseInt(staffCountInput.value);
+    const totalAmount = parseFloat(totalAmountInput.value);
+
+    if (!periodInput || isNaN(staffCount) || isNaN(totalAmount)) {
+        showToast('Please fill in all fields correctly.', 'warning');
+        return;
+    }
+
+    const [year, monthNum] = periodInput.split('-');
+    const date = new Date(year, monthNum - 1);
+    const formattedPeriod = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    const newPayrollEntry = {
+        period: formattedPeriod,
+        staff_count: staffCount,
+        total_amount: totalAmount,
+        status: 'Processed',
+        date_processed: new Date().toISOString()
+    };
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+
+    const addedEntry = await insertData('payroll', newPayrollEntry);
+    if (addedEntry) {
+        payrollEntries.push(addedEntry);
+        displayPayrollEntries();
+        toggleModal(payrollModal, false);
+        await addAuditLog(loggedInUserEmail, 'Processed Payroll', 'Payroll', `Processed payroll for ${formattedPeriod}, amount: $${totalAmount}`);
+    }
+}
+
+async function deletePayrollEntry(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can delete payroll entries.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this payroll entry?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        const deletedEntry = payrollEntries.find(e => e.id === id);
+        const success = await deleteData('payroll', id);
+        if (success) {
+            payrollEntries = payrollEntries.filter(e => e.id !== id);
+            displayPayrollEntries();
+            await addAuditLog(loggedInUserEmail, 'Deleted Payroll Entry', 'Payroll', `Deleted payroll entry for period: ${deletedEntry.period}`);
+        }
+    }
+}
+
+// --- Finance Module Functions ---
+
+async function loadInvoices() {
+    invoices = await fetchData('invoices');
+    displayInvoices();
+}
+
+function displayInvoices() {
+    if (!financeTableBody) return;
+    financeTableBody.innerHTML = '';
+    if (invoices.length === 0) {
+        financeTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No invoices found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    invoices.forEach(invoice => {
+        const row = financeTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        let statusBgClass = '';
+        let statusTextColorClass = '';
+        switch (invoice.status) {
+            case 'Paid': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
+            case 'Pending': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
+            case 'Overdue': statusBgClass = 'bg-red-100'; statusTextColorClass = 'text-red-800'; break;
+        }
+        row.innerHTML = `
+            <td class="py-3 px-4">${invoice.invoice_number}</td>
+            <td class="py-3 px-4">${new Date(invoice.invoice_date).toLocaleDateString()}</td>
+            <td class="py-3 px-4">$${invoice.amount.toFixed(2)}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${statusBgClass} ${statusTextColorClass}">
+                    ${invoice.status}
+                </span>
+            </td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' ? `
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit Invoice" onclick="editInvoice('${invoice.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete Invoice" onclick="deleteInvoice('${invoice.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+async function addInvoiceFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can add invoices.', 'error');
+        return;
+    }
+
+    const id = addInvoiceForm.dataset.editId;
+    const invoiceData = {
+        invoice_number: invoiceNumberInput.value,
+        invoice_date: invoiceDateInput.value,
+        amount: parseFloat(invoiceAmountInput.value),
+        status: invoiceStatusSelect.value,
+    };
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    let auditAction = '';
+    let auditDetails = '';
+
+    if (id) {
+        const updatedInvoice = await updateData('invoices', invoiceData, id);
+        if (updatedInvoice) {
+            invoices = invoices.map(i => i.id === id ? updatedInvoice : i);
+            displayInvoices();
+            toggleModal(addInvoiceModal, false);
+            auditAction = 'Updated Invoice';
+            auditDetails = `Updated invoice: ${invoiceData.invoice_number} (ID: ${id})`;
+        }
+    } else {
+        const addedInvoice = await insertData('invoices', invoiceData);
+        if (addedInvoice) {
+            invoices.push(addedInvoice);
+            displayInvoices();
+            toggleModal(addInvoiceModal, false);
+            auditAction = 'Added Invoice';
+            auditDetails = `Added new invoice: ${invoiceData.invoice_number} (ID: ${addedInvoice.id})`;
+        }
+    }
+    if (auditAction) {
+        await addAuditLog(loggedInUserEmail, auditAction, 'Finance', auditDetails);
+    }
+}
+
+function editInvoice(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can edit invoices.', 'error');
+        return;
+    }
+    const invoice = invoices.find(i => i.id === id);
+    if (invoice) {
+        if (invoiceNumberInput) invoiceNumberInput.value = invoice.invoice_number;
+        if (invoiceDateInput) invoiceDateInput.value = invoice.invoice_date;
+        if (invoiceAmountInput) invoiceAmountInput.value = invoice.amount;
+        if (invoiceStatusSelect) invoiceStatusSelect.value = invoice.status;
+        if (addInvoiceForm) addInvoiceForm.dataset.editId = invoice.id;
+        if (addInvoiceModal) toggleModal(addInvoiceModal, true);
+    }
+}
+
+async function deleteInvoice(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can delete invoices.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this invoice?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        const deletedInvoice = invoices.find(i => i.id === id);
+        const success = await deleteData('invoices', id);
+        if (success) {
+            invoices = invoices.filter(i => i.id !== id);
+            displayInvoices();
+            await addAuditLog(loggedInUserEmail, 'Deleted Invoice', 'Finance', `Deleted invoice: ${deletedInvoice.invoice_number}`);
+        }
+    }
+}
+
+// --- Attendance Module Functions (Student) ---
+
+async function loadStudentAttendance() {
+    studentAttendanceRecords = await fetchData('student_attendance');
+    displayStudentAttendance(studentAttendanceRecords);
+    updateStudentAttendanceSummary(studentAttendanceRecords);
+}
+
+function displayStudentAttendance(filteredRecords) {
+    if (!attendanceTableBody) return;
+    attendanceTableBody.innerHTML = '';
+    if (filteredRecords.length === 0) {
+        attendanceTableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No student attendance records found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    filteredRecords.forEach(record => {
+        const student = students.find(s => s.id === record.student_id);
+        const studentName = student ? student.full_name : 'Unknown Student';
+        const studentClass = student ? student.class : 'N/A';
+        const studentRollNo = student ? student.roll_no : 'N/A';
+
+        const row = attendanceTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${studentName}</td>
+            <td class="py-3 px-4">${studentRollNo}</td>
+            <td class="py-3 px-4">${studentClass}</td>
+            <td class="py-3 px-4">${new Date(record.attendance_date).toLocaleDateString()}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-green-100 text-green-800' : record.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
+                    ${record.status}
+                </span>
+            </td>
+            <td class="py-3 px-4">${record.remarks || 'N/A'}</td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' || currentUserRole === 'teacher' ? `
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit Attendance" onclick="editStudentAttendance('${record.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete Attendance" onclick="deleteStudentAttendance('${record.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+function updateStudentAttendanceSummary(records) {
+    if (attendanceTotalStudents) attendanceTotalStudents.textContent = students.length;
+    const presentCount = records.filter(r => r.status === 'Present').length;
+    const absentCount = records.filter(r => r.status === 'Absent').length;
+    if (attendanceTotalPresent) attendanceTotalPresent.textContent = presentCount;
+    if (attendanceTotalAbsent) attendanceTotalAbsent.textContent = absentCount;
+}
+
+function populateStudentAttendanceDropdown() {
+    if (!attendanceStudentSelect) return;
+    attendanceStudentSelect.innerHTML = '<option value="">Select Student</option>';
+    students.forEach(student => {
+        const option = document.createElement('option');
+        option.value = student.id;
+        option.textContent = `${student.full_name} (Roll No: ${student.roll_no})`;
+        attendanceStudentSelect.appendChild(option);
+    });
+}
+
+function showAddAttendanceModal() {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can mark student attendance.', 'error');
+        return;
+    }
+    if (attendanceModalTitle) attendanceModalTitle.textContent = 'Mark Attendance';
+    if (attendanceFormSubmitBtn) attendanceFormSubmitBtn.textContent = 'Mark Attendance';
+    if (attendanceForm) attendanceForm.reset();
+    if (attendanceIdInput) attendanceIdInput.value = '';
+    if (attendanceDateInput) attendanceDateInput.valueAsDate = new Date();
+    if (attendanceModal) toggleModal(attendanceModal, true);
+}
+
+function editStudentAttendance(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can edit student attendance.', 'error');
+        return;
+    }
+    const record = studentAttendanceRecords.find(r => r.id === id);
+    if (record) {
+        if (attendanceModalTitle) attendanceModalTitle.textContent = 'Edit Attendance';
+        if (attendanceFormSubmitBtn) attendanceFormSubmitBtn.textContent = 'Save Changes';
+        if (attendanceIdInput) attendanceIdInput.value = record.id;
+        if (attendanceStudentSelect) attendanceStudentSelect.value = record.student_id;
+        if (attendanceDateInput) attendanceDateInput.value = record.attendance_date;
+        if (attendanceStatusSelect) attendanceStatusSelect.value = record.status;
+        if (attendanceRemarksTextarea) attendanceRemarksTextarea.value = record.remarks || '';
+        if (attendanceModal) toggleModal(attendanceModal, true);
+    }
+}
+
+async function attendanceFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can mark student attendance.', 'error');
+        return;
+    }
+
+    const id = attendanceIdInput.value;
+    const newRecord = {
+        student_id: attendanceStudentSelect.value,
+        attendance_date: attendanceDateInput.value,
+        status: attendanceStatusSelect.value,
+        remarks: attendanceRemarksTextarea.value,
+    };
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    let auditAction = '';
+    let auditDetails = '';
+
+    if (id) {
+        const updatedRecord = await updateData('student_attendance', newRecord, id);
+        if (updatedRecord) {
+            studentAttendanceRecords = studentAttendanceRecords.map(r => r.id === id ? updatedRecord : r);
+            displayStudentAttendance(studentAttendanceRecords);
+            updateStudentAttendanceSummary(studentAttendanceRecords);
+            toggleModal(attendanceModal, false);
+            auditAction = 'Updated Attendance';
+            auditDetails = `Updated attendance for student ${newRecord.student_id} on ${newRecord.attendance_date} to ${newRecord.status}`;
+        }
+    } else {
+        const addedRecord = await insertData('student_attendance', newRecord);
+        if (addedRecord) {
+            studentAttendanceRecords.push(addedRecord);
+            displayStudentAttendance(studentAttendanceRecords);
+            updateStudentAttendanceSummary(studentAttendanceRecords);
+            toggleModal(attendanceModal, false);
+            auditAction = 'Marked Attendance';
+            auditDetails = `Marked ${newRecord.status} for student ${newRecord.student_id} on ${newRecord.attendance_date}`;
+        }
+    }
+    if (auditAction) {
+        await addAuditLog(loggedInUserEmail, auditAction, 'Attendance', auditDetails);
+    }
+}
+
+async function deleteStudentAttendance(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can delete student attendance records.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this attendance record?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        const deletedRecord = studentAttendanceRecords.find(r => r.id === id);
+        const success = await deleteData('student_attendance', id);
+        if (success) {
+            studentAttendanceRecords = studentAttendanceRecords.filter(r => r.id !== id);
+            displayStudentAttendance(studentAttendanceRecords);
+            updateStudentAttendanceSummary(studentAttendanceRecords);
+            await addAuditLog(loggedInUserEmail, 'Deleted Attendance', 'Attendance', `Deleted attendance record for ${deletedRecord.student_id} on ${deletedRecord.attendance_date}`);
+        }
+    }
+}
+
+function filterStudentAttendance() {
+    const nameFilter = attendanceStudentNameFilter.value.toLowerCase();
+    const classFilter = attendanceClassFilter.value;
+    const dateFilter = attendanceDateFilter.value;
+
+    const filtered = studentAttendanceRecords.filter(record => {
+        const student = students.find(s => s.id === record.student_id);
+        const studentName = student ? student.full_name.toLowerCase() : '';
+        const studentClass = student ? student.class : '';
+
+        const matchesName = studentName.includes(nameFilter);
+        const matchesClass = classFilter === '' || studentClass === classFilter;
+        const matchesDate = dateFilter === '' || record.attendance_date === dateFilter;
+
+        return matchesName && matchesClass && matchesDate;
+    });
+    displayStudentAttendance(filtered);
+    updateStudentAttendanceSummary(filtered);
+}
+
+// --- Teacher Attendance Module Functions ---
+
+async function loadTeacherAttendance() {
+    teacherAttendanceRecords = await fetchData('teacher_attendance');
+    displayTeacherAttendance(teacherAttendanceRecords);
+    updateTeacherAttendanceSummary(teacherAttendanceRecords);
+}
+
+function displayTeacherAttendance(filteredRecords) {
+    if (!teacherAttendanceTableBody) return;
+    teacherAttendanceTableBody.innerHTML = '';
+    if (filteredRecords.length === 0) {
+        teacherAttendanceTableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No teacher attendance records found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    filteredRecords.forEach(record => {
+        const teacher = teachers.find(t => t.id === record.teacher_id);
+        const teacherName = teacher ? teacher.full_name : 'Unknown Teacher';
+        const teacherSubject = teacher ? teacher.subject : 'N/A';
+
+        const row = teacherAttendanceTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${teacherName}</td>
+            <td class="py-3 px-4">${teacherSubject}</td>
+            <td class="py-3 px-4">${new Date(record.attendance_date).toLocaleDateString()}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-green-100 text-green-800' : record.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
+                    ${record.status}
+                </span>
+            </td>
+            <td class="py-3 px-4">${record.remarks || 'N/A'}</td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' ? `
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit Attendance" onclick="editTeacherAttendance('${record.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete Attendance" onclick="deleteTeacherAttendance('${record.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+function updateTeacherAttendanceSummary(records) {
+    if (teacherAttendanceTotalTeachers) teacherAttendanceTotalTeachers.textContent = teachers.length;
+    const presentCount = records.filter(r => r.status === 'Present').length;
+    const absentCount = records.filter(r => r.status === 'Absent').length;
+    if (teacherAttendanceTotalPresent) teacherAttendanceTotalPresent.textContent = presentCount;
+    if (teacherAttendanceTotalAbsent) teacherAttendanceTotalAbsent.textContent = absentCount;
+}
+
+function populateTeacherAttendanceDropdown() {
+    if (!teacherAttendanceTeacherSelect) return;
+    teacherAttendanceTeacherSelect.innerHTML = '<option value="">Select Teacher</option>';
+    teachers.forEach(teacher => {
+        const option = document.createElement('option');
+        option.value = teacher.id;
+        option.textContent = `${teacher.full_name} (${teacher.subject})`;
+        teacherAttendanceTeacherSelect.appendChild(option);
+    });
+}
+
+function showAddTeacherAttendanceModal() {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can mark teacher attendance.', 'error');
+        return;
+    }
+    if (teacherAttendanceModalTitle) teacherAttendanceModalTitle.textContent = 'Mark Teacher Attendance';
+    if (teacherAttendanceFormSubmitBtn) teacherAttendanceFormSubmitBtn.textContent = 'Mark Attendance';
+    if (teacherAttendanceForm) teacherAttendanceForm.reset();
+    if (teacherAttendanceIdInput) teacherAttendanceIdInput.value = '';
+    if (teacherAttendanceDateInput) teacherAttendanceDateInput.valueAsDate = new Date();
+    if (teacherAttendanceModal) toggleModal(teacherAttendanceModal, true);
+}
+
+function editTeacherAttendance(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can edit teacher attendance.', 'error');
+        return;
+    }
+    const record = teacherAttendanceRecords.find(r => r.id === id);
+    if (record) {
+        if (teacherAttendanceModalTitle) teacherAttendanceModalTitle.textContent = 'Edit Attendance';
+        if (teacherAttendanceFormSubmitBtn) teacherAttendanceFormSubmitBtn.textContent = 'Save Changes';
+        if (teacherAttendanceIdInput) teacherAttendanceIdInput.value = record.id;
+        if (teacherAttendanceTeacherSelect) teacherAttendanceTeacherSelect.value = record.teacher_id;
+        if (teacherAttendanceDateInput) teacherAttendanceDateInput.value = record.attendance_date;
+        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = record.status;
+        if (teacherAttendanceRemarksTextarea) teacherAttendanceRemarksTextarea.value = record.remarks || '';
+        if (teacherAttendanceModal) toggleModal(teacherAttendanceModal, true);
+    }
+}
+
+async function teacherAttendanceFormSubmitHandler(event) {
+    event.preventDefault();
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can manage teacher attendance.', 'error');
+        return;
+    }
+
+    const id = teacherAttendanceIdInput.value;
+    const newRecord = {
+        teacher_id: teacherAttendanceTeacherSelect.value,
+        attendance_date: teacherAttendanceDateInput.value,
+        status: teacherAttendanceStatusSelect.value,
+        remarks: teacherAttendanceRemarksTextarea.value,
+    };
+
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    let auditAction = '';
+    let auditDetails = '';
+
+    if (id) {
+        const updatedRecord = await updateData('teacher_attendance', newRecord, id);
+        if (updatedRecord) {
+            teacherAttendanceRecords = teacherAttendanceRecords.map(r => r.id === id ? updatedRecord : r);
+            displayTeacherAttendance(teacherAttendanceRecords);
+            updateTeacherAttendanceSummary(teacherAttendanceRecords);
+            toggleModal(teacherAttendanceModal, false);
+            auditAction = 'Updated Teacher Attendance';
+            auditDetails = `Updated attendance for teacher ${newRecord.teacher_id} on ${newRecord.attendance_date} to ${newRecord.status}`;
+        }
+    } else {
+        const addedRecord = await insertData('teacher_attendance', newRecord);
+        if (addedRecord) {
+            teacherAttendanceRecords.push(addedRecord);
+            displayTeacherAttendance(teacherAttendanceRecords);
+            updateTeacherAttendanceSummary(teacherAttendanceRecords);
+            toggleModal(teacherAttendanceModal, false);
+            auditAction = 'Marked Teacher Attendance';
+            auditDetails = `Marked ${newRecord.status} for teacher ${newRecord.teacher_id} on ${newRecord.attendance_date}`;
+        }
+    }
+    if (auditAction) {
+        await addAuditLog(loggedInUserEmail, auditAction, 'Teacher Attendance', auditDetails);
+    }
+}
+
+async function deleteTeacherAttendance(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can delete teacher attendance records.', 'error');
+        return;
+    }
+    if (confirm('Are you sure you want to delete this attendance record?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        const deletedRecord = teacherAttendanceRecords.find(r => r.id === id);
+        const success = await deleteData('teacher_attendance', id);
+        if (success) {
+            teacherAttendanceRecords = teacherAttendanceRecords.filter(r => r.id !== id);
+            displayTeacherAttendance(teacherAttendanceRecords);
+            updateTeacherAttendanceSummary(teacherAttendanceRecords);
+            await addAuditLog(loggedInUserEmail, 'Deleted Teacher Attendance', 'Teacher Attendance', `Deleted attendance record for ${deletedRecord.teacher_id} on ${deletedRecord.attendance_date}`);
+        }
+    }
+}
+
+function filterTeacherAttendance() {
+    const nameFilter = teacherAttendanceNameFilter.value.toLowerCase();
+    const subjectFilter = teacherAttendanceSubjectFilter.value;
+    const dateFilter = teacherAttendanceDateFilter.value;
+
+    const filtered = teacherAttendanceRecords.filter(record => {
+        const teacher = teachers.find(t => t.id === record.teacher_id);
+        const teacherName = teacher ? teacher.full_name.toLowerCase() : '';
+        const teacherSubject = teacher ? teacher.subject : '';
+
+        const matchesName = nameFilter === '' || teacherName.includes(nameFilter);
+        const matchesSubject = subjectFilter === '' || teacherSubject === subjectFilter;
+        const matchesDate = dateFilter === '' || record.attendance_date === dateFilter;
+
+        return matchesName && matchesSubject && matchesDate;
+    });
+    displayTeacherAttendance(filtered);
+    updateTeacherAttendanceSummary(filtered);
+}
+
+// --- Calendar Module Functions ---
+
+// Holiday Data (from script1.js)
+holidays = [
+    { date: '2023-01-01', name: 'New Year\'s Day' },
+    { date: '2023-01-16', name: 'Martin Luther King, Jr. Day' },
+    { date: '2023-02-20', name: 'Presidents\' Day' },
+    { date: '2023-03-17', name: 'St. Patrick\'s Day (Observed)' },
+    { date: '2023-04-07', name: 'Good Friday' },
+    { date: '2023-05-29', name: 'Memorial Day' },
+    { date: '2023-06-19', name: 'Juneteenth' },
+    { date: '2023-07-04', name: 'Independence Day' },
+    { date: '2023-09-04', name: 'Labor Day' },
+    { date: '2023-10-09', name: 'Columbus Day' },
+    { date: '2023-11-10', name: 'Veterans Day (Observed)' },
+    { date: '2023-11-23', name: 'Thanksgiving Day' },
+    { date: '2023-12-25', name: 'Christmas Day' },
+    { date: '2024-01-01', name: 'New Year\'s Day' },
+    { date: '2024-01-15', name: 'Martin Luther King, Jr. Day' },
+    { date: '2024-02-19', name: 'Presidents\' Day' },
+    { date: '2024-03-29', name: 'Good Friday' },
+    { date: '2024-05-27', name: 'Memorial Day' },
+    { date: '2024-06-19', name: 'Juneteenth' },
+    { date: '2024-07-04', name: 'Independence Day' },
+    { date: '2024-09-02', name: 'Labor Day' },
+    { date: '2024-10-14', name: 'Columbus Day' },
+    { date: '2024-11-11', name: 'Veterans Day' },
+    { date: '2024-11-28', name: 'Thanksgiving Day' },
+    { date: '2024-12-25', name: 'Christmas Day' },
+];
+
+function initializeFullCalendar() {
+    if (!fullCalendarEl) return;
+
+    // Destroy existing calendar instance if it exists
+    if (calendar) {
+        calendar.destroy();
+    }
+
+    calendar = new FullCalendar.Calendar(fullCalendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        editable: true,
+        selectable: true,
+        events: schoolEvents.map(event => ({
+            id: event.id,
+            title: event.title,
+            start: event.event_date,
+            description: event.description,
+            allDay: event.all_day || false,
+            color: event.color || '#3788d8'
+        })),
+        eventSources: [
+            {
+                events: holidays.map(holiday => ({
+                    title: holiday.name,
+                    start: holiday.date,
+                    allDay: true,
+                    classNames: ['holiday'],
+                    display: 'background'
+                }))
+            }
+        ],
+        dateClick: function(info) {
+            const currentUserRole = localStorage.getItem('loggedInUserRole');
+            if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+                showToast('Access Denied: Only admin and teachers can add calendar events.', 'error');
+                return;
+            }
+            const title = prompt('Enter event title:');
+            if (title) {
+                const newEvent = {
+                    title: title,
+                    event_date: info.dateStr,
+                    description: prompt('Enter event description (optional):') || '',
+                    all_day: info.allDay,
+                    color: '#3788d8'
+                };
+                addCalendarEvent(newEvent);
+            }
+        },
+        eventClick: function(info) {
+            const currentUserRole = localStorage.getItem('loggedInUserRole');
+            if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+                showToast('Access Denied: Only admin and teachers can edit/delete calendar events.', 'error');
+                return;
+            }
+            if (confirm(`Edit or Delete "${info.event.title}"?`)) {
+                const newTitle = prompt('Edit title:', info.event.title);
+                if (newTitle !== null) {
+                    if (newTitle.trim() === '') {
+                        deleteCalendarEvent(info.event.id);
+                    } else {
+                        const newDescription = prompt('Edit description:', info.event.extendedProps.description || '');
+                        updateCalendarEvent(info.event.id, { title: newTitle, description: newDescription });
+                    }
+                }
+            }
+        },
+        eventDrop: function(info) {
+            const currentUserRole = localStorage.getItem('loggedInUserRole');
+            if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+                showToast('Access Denied: Only admin and teachers can move calendar events.', 'error');
+                info.revert(); // Revert the drag
+                return;
+            }
+            updateCalendarEvent(info.event.id, { event_date: info.event.startStr });
+        },
+        eventResize: function(info) {
+            const currentUserRole = localStorage.getItem('loggedInUserRole');
+            if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+                showToast('Access Denied: Only admin and teachers can resize calendar events.', 'error');
+                info.revert(); // Revert the resize
+                return;
+            }
+            updateCalendarEvent(info.event.id, { event_date: info.event.startStr, end_date: info.event.endStr });
+        }
+    });
+    calendar.render();
+    fullCalendarEl.calendar = calendar; // Store calendar instance on the element
+}
+
+async function loadCalendarEvents() {
+    schoolEvents = await fetchData('events');
+    if (fullCalendarEl && fullCalendarEl.calendar) {
+        fullCalendarEl.calendar.setOption('events', schoolEvents.map(event => ({
+            id: event.id,
+            title: event.title,
+            start: event.event_date,
+            description: event.description,
+            allDay: event.all_day || false,
+            color: event.color || '#3788d8'
+        })));
+    }
+}
+
+async function addCalendarEvent(event) {
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    const addedEvent = await insertData('events', event);
+    if (addedEvent) {
+        schoolEvents.push(addedEvent);
+        if (fullCalendarEl && fullCalendarEl.calendar) {
+            fullCalendarEl.calendar.addEvent({
+                id: addedEvent.id,
+                title: addedEvent.title,
+                start: addedEvent.event_date,
+                description: addedEvent.description,
+                allDay: addedEvent.all_day,
+                color: addedEvent.color
+            });
+        }
+        await addAuditLog(loggedInUserEmail, 'Added Calendar Event', 'Calendar', `Added event: "${addedEvent.title}"`);
+    }
+}
+
+async function updateCalendarEvent(id, updates) {
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    const updatedEvent = await updateData('events', updates, id);
+    if (updatedEvent) {
+        schoolEvents = schoolEvents.map(e => e.id === id ? updatedEvent : e);
+        await addAuditLog(loggedInUserEmail, 'Updated Calendar Event', 'Calendar', `Updated event: "${updatedEvent.title}"`);
+    }
+}
+
+async function deleteCalendarEvent(id) {
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    if (confirm('Are you sure you want to delete this event?')) {
+        const deletedEvent = schoolEvents.find(e => e.id === id);
+        const success = await deleteData('events', id);
+        if (success) {
+            schoolEvents = schoolEvents.filter(e => e.id !== id);
+            if (fullCalendarEl && fullCalendarEl.calendar) {
+                const eventToRemove = fullCalendarEl.calendar.getEventById(id);
+                if (eventToRemove) eventToRemove.remove();
+            }
+            await addAuditLog(loggedInUserEmail, 'Deleted Calendar Event', 'Calendar', `Deleted event: "${deletedEvent.title}"`);
+        }
+    }
+}
+
+function renderHolidayList() {
+    if (!holidayListContainer) return;
+    holidayListContainer.innerHTML = '';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcomingHolidays = holidays
+        .filter(holiday => new Date(holiday.date) >= today)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (upcomingHolidays.length === 0) {
+        holidayListContainer.innerHTML = '<p class="text-gray-500">No upcoming holidays.</p>';
+        return;
+    }
+
+    upcomingHolidays.slice(0, 5).forEach(holiday => {
+        const holidayDate = new Date(holiday.date);
+        const formattedDate = holidayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const listItem = document.createElement('div');
+        listItem.className = 'holiday-list-item module-card';
+        listItem.innerHTML = `
+            <span class="date">${formattedDate}</span>
+            <span class="name">${holiday.name}</span>
+            <i class="fas fa-star text-red-500"></i>
+        `;
+        holidayListContainer.appendChild(listItem);
+    });
+}
+
+// --- Reports Module Functions ---
+
 function renderReportsCharts() {
     const attendanceCtx = document.getElementById('attendanceChart');
     const performanceCtx = document.getElementById('performanceChart');
@@ -1996,7 +2785,7 @@ function renderReportsCharts() {
     }
 
     if (attendanceCtx && typeof Chart !== 'undefined') {
-        attendanceChartInstance = new Chart(attendanceCtx, {
+        attendanceChartInstance = new Chart(attendanceCtx.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -2022,7 +2811,7 @@ function renderReportsCharts() {
     }
 
     if (performanceCtx && typeof Chart !== 'undefined') {
-        performanceChartInstance = new Chart(performanceCtx, {
+        performanceChartInstance = new Chart(performanceCtx.getContext('2d'), {
             type: 'line',
             data: {
                 labels: ['Q1', 'Q2', 'Q3', 'Q4'],
@@ -2048,921 +2837,335 @@ function renderReportsCharts() {
     }
 }
 
-// Modals for Add/Edit Student, Teacher, User, Announcement, Attendance
-window.showAddStudentForm = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    // MODIFIED: Allow teachers to add students
-    if (userRole !== 'admin' && userRole !== 'teacher') { 
-        alert('Access Denied: Only admin and teachers can add students.');
-        return;
-    }
-    studentModalTitle.textContent = 'Add New Student';
-    studentFormSubmitBtn.textContent = 'Add Student';
-    document.getElementById('studentId').value = '';
-    studentForm.reset();
-    if (studentModal) {
-        studentModal.classList.remove('hidden');
-        studentModal.style.display = 'flex';
-    }
-}
-window.editStudent = function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can edit students.');
-        return;
-    }
-    const student = students.find(s => s.id === id);
-    if (student) {
-        studentModalTitle.textContent = 'Edit Student';
-        studentFormSubmitBtn.textContent = 'Save Changes';
-        document.getElementById('studentId').value = student.id;
-        document.getElementById('studentFullName').value = student.name;
-        document.getElementById('studentFatherName').value = student.father_name;
-        document.getElementById('studentMotherName').value = student.mother_name;
-        document.getElementById('studentClass').value = student.class;
-        document.getElementById('studentRollNo').value = student.roll_no;
-        document.getElementById('studentAadharNo').value = student.aadhar_no;
-        document.getElementById('studentEmail').value = student.email;
-        document.getElementById('studentPhone').value = student.phone;
-        document.getElementById('studentStatus').value = student.status;
-        if (studentModal) {
-            studentModal.classList.remove('hidden');
-            studentModal.style.display = 'flex';
-        }
-    }
-}
-window.deleteStudent = async function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can delete students.');
-        return;
-    }
-    if (confirm('Are you sure you want to delete this student?')) {
-        try {
-            const { error } = await supabase.from('students').delete().eq('id', id);
-            if (error) throw error;
+// --- Audit Logs Module Functions ---
 
-            const deletedStudent = students.find(s => s.id === id);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Deleted Student', 'Students', `Deleted student: ${deletedStudent.name} (ID: ${deletedStudent.id})`);
-            alert('Student deleted successfully!');
-            await fetchStudents();
-        } catch (error) {
-            alert('Error deleting student: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Delete Student Failed', 'Students', `Error: ${error.message}`);
-        }
-    }
+async function fetchAuditLogs() {
+    auditLogs = await fetchData('audit_logs');
+    displayAuditLogs(auditLogs);
 }
 
-window.showAddTeacherForm = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can add teachers.');
+function displayAuditLogs(logs) {
+    const auditLogTableBody = document.getElementById('auditLogTableBody');
+    if (!auditLogTableBody) return;
+    auditLogTableBody.innerHTML = '';
+    if (logs.length === 0) {
+        auditLogTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No audit logs found.</td></tr>';
         return;
     }
-    teacherModalTitle.textContent = 'Add New Teacher';
-    teacherFormSubmitBtn.textContent = 'Add Teacher';
-    document.getElementById('teacherId').value = '';
-    teacherForm.reset();
-    if (teacherModal) {
-        teacherModal.classList.remove('hidden');
-        teacherModal.style.display = 'flex';
-    }
+    logs.forEach(log => {
+        const row = auditLogTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${new Date(log.timestamp).toLocaleString()}</td>
+            <td class="py-3 px-4">${log.user_email}</td>
+            <td class="py-3 px-4">${log.action}</td>
+            <td class="py-3 px-4">${log.module}</td>
+            <td class="py-3 px-4">${log.details}</td>
+        `;
+    });
 }
-window.editTeacher = function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can edit teachers.');
-        return;
-    }
-    const teacher = teachers.find(t => t.id === id);
-    if (teacher) {
-        teacherModalTitle.textContent = 'Edit Teacher';
-        teacherFormSubmitBtn.textContent = 'Save Changes';
-        document.getElementById('teacherId').value = teacher.id;
-        document.getElementById('teacherFullName').value = teacher.name;
-        document.getElementById('teacherSubject').value = teacher.subject;
-        document.getElementById('teacherEmail').value = teacher.email;
-        document.getElementById('teacherClasses').value = teacher.classes;
-        if (teacherModal) {
-            teacherModal.classList.remove('hidden');
-            teacherModal.style.display = 'flex';
-        }
-    }
-}
-window.deleteTeacher = async function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can delete teachers.');
-        return;
-    }
-    if (confirm('Are you sure you want to delete this teacher?')) {
-        try {
-            const { error } = await supabase.from('teachers').delete().eq('id', id);
-            if (error) throw error;
 
-            const deletedTeacher = teachers.find(t => t.id === id);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Deleted Teacher', 'Teachers', `Deleted teacher: ${deletedTeacher.name} (ID: ${deletedTeacher.id})`);
-            alert('Teacher deleted successfully!');
-            await fetchTeachers();
-        } catch (error) {
-            alert('Error deleting teacher: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Delete Teacher Failed', 'Teachers', `Error: ${error.message}`);
-        }
+// --- Backup & Restore Module Functions ---
+
+async function fetchBackups() {
+    // Backups are simulated in script1.js, keeping that for now
+    backups = JSON.parse(localStorage.getItem('backups')) || [
+        { id: 'B001', backup_id: 'BK20231026-001', date: '2023-10-26 02:00:00', size: '150 MB', type: 'Full' },
+        { id: 'B002', backup_id: 'BK20231025-001', date: '2023-10-25 02:00:00', size: '148 MB', type: 'Full' }
+    ];
+    displayBackupHistory(backups);
+}
+
+function displayBackupHistory(backups) {
+    const backupTableBody = document.getElementById('backupTableBody');
+    if (!backupTableBody) return;
+    backupTableBody.innerHTML = '';
+    if (backups.length === 0) {
+        backupTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No backup history found.</td></tr>';
+        return;
+    }
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+
+    backups.forEach(backup => {
+        const row = backupTableBody.insertRow();
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+            <td class="py-3 px-4">${backup.backup_id}</td>
+            <td class="py-3 px-4">${new Date(backup.date).toLocaleString()}</td>
+            <td class="py-3 px-4">${backup.size}</td>
+            <td class="py-3 px-4">${backup.type}</td>
+            <td class="py-3 px-4">
+                ${currentUserRole === 'admin' ? `
+                <button class="text-green-600 hover:text-green-800 mr-3" title="Download Backup" onclick="downloadBackup('${backup.id}')">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="text-blue-600 hover:text-blue-800 mr-3" title="Restore from Backup" onclick="restoreBackup('${backup.id}')">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-800" title="Delete Backup" onclick="deleteBackup('${backup.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                ` : ''}
+            </td>
+        `;
+    });
+}
+
+function downloadBackup(id) {
+    showToast(`Downloading backup ${id} (simulated).`, 'info');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Downloaded Backup', 'Backup/Restore', `Downloaded backup: ${id}`);
+}
+
+function restoreBackup(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can restore backups.', 'error');
+        return;
+    }
+    if (confirm(`Are you sure you want to restore from backup ${id}? This will overwrite current data.`)) {
+        showToast(`Restoring from backup ${id} (simulated).`, 'warning');
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        addAuditLog(loggedInUserEmail, 'Restored from Backup', 'Backup/Restore', `Restored from backup: ${id}`);
     }
 }
 
-window.showAddUserForm = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can add users.');
+async function deleteBackup(id) {
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can delete backups.', 'error');
         return;
     }
-    userModalTitle.textContent = 'Add New User';
-    userFormSubmitBtn.textContent = 'Add User';
-    document.getElementById('userId').value = '';
-    userForm.reset();
-    document.getElementById('userPassword').required = true;
-    if (userModal) {
-        userModal.classList.remove('hidden');
-        userModal.style.display = 'flex';
+    if (confirm('Are you sure you want to delete this backup record?')) {
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+        // For simulated backups, just remove from array
+        backups = backups.filter(b => b.id !== id);
+        localStorage.setItem('backups', JSON.stringify(backups));
+        displayBackupHistory(backups);
+        showToast('Backup record deleted successfully!', 'success');
+        await addAuditLog(loggedInUserEmail, 'Deleted Backup Record', 'Backup/Restore', `Deleted backup record: ${id}`);
     }
 }
-window.editUser = async function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can edit users.');
-        return;
-    }
-    
-    userModalTitle.textContent = 'Edit User';
-    userFormSubmitBtn.textContent = 'Save Changes';
-    document.getElementById('userId').value = id;
-    document.getElementById('userPassword').value = '';
-    document.getElementById('userPassword').required = false;
 
-    const profile = profiles.find(p => p.id === id);
-    if (profile) {
-        document.getElementById('userFullName').value = profile.full_name || '';
-        document.getElementById('userEmail').value = profile.email || '';
-        document.getElementById('userRole').value = profile.role || '';
-        document.getElementById('userStatus').value = profile.status || '';
+// --- Notification Functions ---
+
+async function loadNotifications() {
+    // Fetch notifications from Supabase (assuming a 'notifications' table)
+    // You might want to filter by user_id if notifications are user-specific
+    notifications = await fetchData('notifications');
+    updateNotificationUI();
+}
+
+function updateNotificationUI() {
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+    if (notificationCount) {
+        notificationCount.textContent = unreadCount > 0 ? unreadCount : '';
+        notificationCount.classList.toggle('hidden', unreadCount === 0);
+    }
+    if (newCount) newCount.textContent = `${unreadCount} New`;
+
+    if (!notificationList) return;
+    notificationList.innerHTML = '';
+    const recentNotifications = notifications.filter(n => !n.is_read).slice(0, 3);
+    if (recentNotifications.length === 0) {
+        notificationList.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>';
     } else {
-        // Fallback to loggedInUser if profile not found (e.g., editing self before profiles are fully loaded)
-        if (loggedInUser.id === id) {
-            document.getElementById('userFullName').value = loggedInUser.raw_user_meta_data?.name || '';
-            document.getElementById('userEmail').value = loggedInUser.email || '';
-            document.getElementById('userRole').value = loggedInUser.raw_user_meta_data?.role || '';
-            document.getElementById('userStatus').value = 'Active'; // Assuming active if logged in
-        } else {
-            alert('User profile not found for editing.');
-            if (userModal) {
-                userModal.classList.add('hidden');
-                userModal.style.display = 'none';
-            }
+        recentNotifications.forEach(n => {
+            const notificationItem = document.createElement('div');
+            notificationItem.className = 'notification-item';
+            notificationItem.innerHTML = `
+                <p>${n.message}</p>
+                <span class="timestamp">${new Date(n.created_at).toLocaleString()}</span>
+            `;
+            notificationItem.addEventListener('click', () => markNotificationAsRead(n.id));
+            notificationList.appendChild(notificationItem);
+        });
+    }
+}
+
+async function markNotificationAsRead(id) {
+    const notification = notifications.find(n => n.id === id);
+    if (notification) {
+        const updated = await updateData('notifications', { is_read: true }, id);
+        if (updated) {
+            notification.is_read = true;
+            updateNotificationUI();
+            showToast('Notification marked as read.', 'info');
+            const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+            await addAuditLog(loggedInUserEmail, 'Notification Read', 'Notifications', `Notification "${notification.message}" marked as read.`);
+        }
+    }
+}
+
+async function markAllNotificationsAsRead() {
+    const unreadNotificationIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadNotificationIds.length > 0) {
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .in('id', unreadNotificationIds);
+
+        if (error) {
+            console.error('Error marking all notifications as read:', error.message);
+            showToast('Error marking all notifications as read.', 'error');
             return;
         }
     }
 
-    if (userModal) {
-        userModal.classList.remove('hidden');
-        userModal.style.display = 'flex';
+    notifications.forEach(n => n.is_read = true);
+    updateNotificationUI();
+    showToast('All notifications marked as read.', 'success');
+    if (notificationDropdown) toggleModal(notificationDropdown, false);
+    if (viewAllModal) toggleModal(viewAllModal, false);
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    await addAuditLog(loggedInUserEmail, 'All Notifications Read', 'Notifications', 'All notifications marked as read.');
+}
+
+function showAllNotifications() {
+    if (!viewAllNotificationList) return;
+    viewAllNotificationList.innerHTML = '';
+    if (notifications.length === 0) {
+        viewAllNotificationList.innerHTML = '<p class="text-gray-500 text-center py-4">No notifications to display.</p>';
+    } else {
+        notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        notifications.forEach(n => {
+            const notificationItem = document.createElement('div');
+            notificationItem.className = `notification-item p-3 border-b border-gray-200 ${n.is_read ? 'bg-gray-50' : 'bg-blue-50 font-semibold'}`;
+            notificationItem.innerHTML = `
+                <p>${n.message}</p>
+                <span class="text-xs text-gray-500">${new Date(n.created_at).toLocaleString()}</span>
+            `;
+            notificationItem.addEventListener('click', () => {
+                markNotificationAsRead(n.id);
+                showAllNotifications();
+            });
+            viewAllNotificationList.appendChild(notificationItem);
+        });
+    }
+    if (viewAllModal) toggleModal(viewAllModal, true);
+}
+
+// --- Dark Mode Toggle ---
+function toggleDarkMode() {
+    document.documentElement.classList.toggle('dark');
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    if (darkModeToggle) darkModeToggle.querySelector('i').className = isDarkMode ? 'fas fa-sun text-yellow-400' : 'fas fa-moon text-gray-600';
+}
+
+function applyTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        if (darkModeToggle) darkModeToggle.querySelector('i').className = 'fas fa-sun text-yellow-400';
+    } else {
+        document.documentElement.classList.remove('dark');
+        if (darkModeToggle) darkModeToggle.querySelector('i').className = 'fas fa-moon text-gray-600';
     }
 }
-window.deleteUser = async function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can delete users.');
+
+// --- Voice Assistant (Speech Recognition) ---
+function startVoiceAssistant() {
+    if (!('webkitSpeechRecognition' in window)) {
+        showToast('Speech recognition not supported in this browser.', 'error');
         return;
     }
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-        try {
-            // Delete from profiles table first
-            const { error: profileError } = await supabase.from('profiles').delete().eq('id', id);
-            if (profileError) throw profileError;
 
-            // Then delete from auth.users (requires service role key on server-side)
-            // This part is client-side for demonstration, but in production, it should be a secure backend call.
-            // IMPORTANT: Replace 'YOUR_SERVICE_ROLE_KEY' with your actual Supabase Service Role Key.
-            // This key should NEVER be exposed on the client-side in a production environment.
-            // This is for demonstration purposes only.
-            const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // <<< REPLACE THIS WITH YOUR ACTUAL SERVICE ROLE KEY
+    const recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
 
-            if (SERVICE_ROLE_KEY === 'YOUR_SERVICE_ROLE_KEY' || !SERVICE_ROLE_KEY) {
-                alert('Service Role Key is not configured. Cannot delete user from auth.users table from client-side.');
-                await addAuditLog(loggedInUser?.email || 'admin', 'Attempted User Deletion', 'User Management', `Attempted to delete user with ID: ${id} (auth.users not deleted due to missing service role key).`);
-                await fetchProfiles(); // Re-fetch profiles to reflect deletion from public.profiles
-                return;
-            }
+    recognition.onstart = () => {
+        showToast('Voice assistant listening...', 'info');
+    };
 
-            const { error: authError } = await supabase.auth.admin.deleteUser(id);
-            if (authError) throw authError;
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        showToast(`You said: "${transcript}"`, 'info');
+        processVoiceCommand(transcript);
+    };
 
-            const deletedProfile = profiles.find(p => p.id === id);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Deleted User', 'User Management', `Deleted user: ${deletedProfile?.full_name || deletedProfile?.email || id}`);
-            alert('User deleted successfully!');
-            await fetchProfiles();
-        } catch (error) {
-            alert('Error deleting user: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Delete User Failed', 'User Management', `Error: ${error.message}`);
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        showToast(`Voice assistant error: ${event.error}`, 'error');
+    };
+
+    recognition.onend = () => {
+        showToast('Voice assistant stopped.', 'info');
+    };
+
+    recognition.start();
+}
+
+function processVoiceCommand(command) {
+    if (command.includes('open dashboard')) {
+        showModule('dashboard');
+    } else if (command.includes('open students')) {
+        showModule('students');
+    } else if (command.includes('open teachers')) {
+        showModule('teachers');
+    } else if (command.includes('open payroll')) {
+        showModule('payroll');
+    } else if (command.includes('open finance')) {
+        showModule('finance');
+    } else if (command.includes('open attendance')) {
+        showModule('attendance');
+    } else if (command.includes('open calendar')) {
+        showModule('calendar');
+    } else if (command.includes('open reports')) {
+        showModule('reports');
+    } else if (command.includes('open user management')) {
+        showModule('user-management');
+    } else if (command.includes('add student')) {
+        showModule('students');
+        showAddStudentForm();
+    } else if (command.includes('add teacher')) {
+        showModule('teachers');
+        showAddTeacherForm();
+    } else if (command.includes('mark student attendance')) {
+        showModule('attendance');
+        showAddAttendanceModal();
+    } else if (command.includes('mark teacher attendance')) {
+        showModule('teacher-attendance');
+        showAddTeacherAttendanceModal();
+    } else if (command.includes('logout')) {
+        handleLogout();
+    } else if (command.includes('dark mode on')) {
+        if (!document.documentElement.classList.contains('dark')) {
+            toggleDarkMode();
         }
+    } else if (command.includes('light mode on')) {
+        if (document.documentElement.classList.contains('dark')) {
+            toggleDarkMode();
+        }
+    } else {
+        showToast('Command not recognized. Please try again.', 'warning');
     }
 }
 
-window.showAddAnnouncementModal = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can add announcements.');
-        return;
-    }
-    announcementModalTitle.textContent = 'Add New Announcement';
-    announcementFormSubmitBtn.textContent = 'Publish Announcement';
-    document.getElementById('announcementId').value = '';
-    announcementForm.reset();
-    if (announcementModal) {
-        announcementModal.classList.remove('hidden');
-        announcementModal.style.display = 'flex';
-    }
-}
-window.editAnnouncement = function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can edit announcements.');
-        return;
-    }
-    const announcement = announcements.find(a => a.id === id);
-    if (announcement) {
-        announcementModalTitle.textContent = 'Edit Announcement';
-        announcementFormSubmitBtn.textContent = 'Save Changes';
-        document.getElementById('announcementId').value = announcement.id;
-        document.getElementById('announcementTitle').value = announcement.title;
-        document.getElementById('announcementContent').value = announcement.content;
-        document.getElementById('announcementStatus').value = announcement.status;
-        if (announcementModal) {
-            announcementModal.classList.remove('hidden');
-            announcementModal.style.display = 'flex';
-        }
-    }
-}
-window.deleteAnnouncement = async function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can delete announcements.');
-        return;
-    }
-    if (confirm('Are you sure you want to delete this announcement?')) {
-        try {
-            const { error } = await supabase.from('announcements').delete().eq('id', id);
-            if (error) throw error;
-
-            const deletedAnnouncement = announcements.find(a => a.id === id);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Deleted Announcement', 'Announcements', `Deleted: "${deletedAnnouncement.title}" (ID: ${deletedAnnouncement.id})`);
-            alert('Announcement deleted successfully!');
-            await fetchAnnouncements();
-        } catch (error) {
-            alert('Error deleting announcement: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Delete Announcement Failed', 'Announcements', `Error: ${error.message}`);
-        }
-    }
-}
-
-// Student Attendance Module Modals and Functions
-window.showAddAttendanceModal = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can mark student attendance.');
-        return;
-    }
-    attendanceModalTitle.textContent = 'Mark Attendance';
-    attendanceFormSubmitBtn.textContent = 'Mark Attendance';
-    document.getElementById('attendanceId').value = '';
-    attendanceForm.reset();
-    populateStudentSelect();
-    document.getElementById('attendanceDate').valueAsDate = new Date();
-    if (attendanceModal) {
-        attendanceModal.classList.remove('hidden');
-        attendanceModal.style.display = 'flex';
-    }
-}
-
-window.editAttendance = function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can edit student attendance.');
-        return;
-    }
-    const record = attendanceRecords.find(r => r.id === id);
-    if (record) {
-        attendanceModalTitle.textContent = 'Edit Attendance';
-        attendanceFormSubmitBtn.textContent = 'Save Changes';
-        document.getElementById('attendanceId').value = record.id;
-        populateStudentSelect(record.student_id);
-        document.getElementById('attendanceDate').value = record.date;
-        document.getElementById('attendanceStatus').value = record.status;
-        document.getElementById('attendanceRemarks').value = record.remarks;
-        if (attendanceModal) {
-            attendanceModal.classList.remove('hidden');
-            attendanceModal.style.display = 'flex';
-        }
-    }
-}
-
-window.deleteAttendance = async function(id) {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can delete student attendance records.');
-        return;
-    }
-    if (confirm('Are you sure you want to delete this attendance record?')) {
-        try {
-            const { error } = await supabase.from('attendance_records').delete().eq('id', id);
-            if (error) throw error;
-
-            const deletedRecord = attendanceRecords.find(r => r.id === id);
-            const student = students.find(s => s.id === deletedRecord.student_id);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Deleted Attendance', 'Attendance', `Deleted attendance for ${student ? student.name : 'Unknown Student'} on ${deletedRecord.date}`);
-            alert('Attendance record deleted successfully!');
-            await fetchAttendanceRecords();
-        } catch (error) {
-            alert('Error deleting attendance record: ' + error.message);
-            console.error('Supabase error:', error);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Delete Attendance Failed', 'Attendance', `Error: ${error.message}`);
-        }
-    }
-}
-
-function populateStudentSelect(selectedStudentId = '') {
-    if (!attendanceStudentSelect) return;
-    attendanceStudentSelect.innerHTML = '<option value="">Select Student</option>';
-    students.forEach(student => {
-        const option = document.createElement('option');
-        option.value = student.id;
-        option.textContent = `${student.name} (Roll No: ${student.roll_no}, Class: ${student.class})`;
-        if (student.id === selectedStudentId) {
-            option.selected = true;
-        }
-        attendanceStudentSelect.appendChild(option);
-    });
-}
-
-// Close modal event listeners
-if (closeStudentModal) closeStudentModal.addEventListener('click', function() { if (studentModal) { studentModal.classList.add('hidden'); studentModal.style.display = 'none'; } studentForm.reset(); });
-if (closeTeacherModal) closeTeacherModal.addEventListener('click', function() { if (teacherModal) { teacherModal.classList.add('hidden'); teacherModal.style.display = 'none'; } teacherForm.reset(); });
-if (closeUserModal) closeUserModal.addEventListener('click', function() { if (userModal) { userModal.classList.add('hidden'); userModal.style.display = 'none'; } userForm.reset(); });
-if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', function() { if (announcementModal) { announcementModal.classList.add('hidden'); announcementModal.style.display = 'none'; } announcementForm.reset(); });
-if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', function() { if (attendanceModal) { attendanceModal.classList.add('hidden'); attendanceModal.style.display = 'none'; } attendanceForm.reset(); });
-if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', function() { if (teacherAttendanceModal) { teacherAttendanceModal.classList.add('hidden'); teacherAttendanceModal.style.display = 'none'; } teacherAttendanceForm.reset(); });
-
-// Close modal on outside click event listeners
-if (studentModal) studentModal.addEventListener('click', (e) => { if (e.target === studentModal) { studentModal.classList.add('hidden'); studentModal.style.display = 'none'; studentForm.reset(); } });
-if (teacherModal) teacherModal.addEventListener('click', (e) => { if (e.target === teacherModal) { teacherModal.classList.add('hidden'); teacherModal.style.display = 'none'; teacherForm.reset(); } });
-if (userModal) userModal.addEventListener('click', (e) => { if (e.target === userModal) { userModal.classList.add('hidden'); userModal.style.display = 'none'; userForm.reset(); } });
-if (announcementModal) announcementModal.addEventListener('click', (e) => { if (e.target === announcementModal) { announcementModal.classList.add('hidden'); announcementModal.style.display = 'none'; announcementForm.reset(); } });
-if (attendanceModal) attendanceModal.addEventListener('click', (e) => { if (e.target === attendanceModal) { attendanceModal.classList.add('hidden'); attendanceModal.style.display = 'none'; attendanceForm.reset(); } });
-if (teacherAttendanceModal) teacherAttendanceModal.addEventListener('click', (e) => { if (e.target === teacherAttendanceModal) { teacherAttendanceModal.classList.add('hidden'); teacherAttendanceModal.style.display = 'none'; teacherAttendanceForm.reset(); } });
-
-// Add/Edit Student Form Submission
-if (studentForm) {
-    studentForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        // MODIFIED: Allow teachers to manage student data
-        if (userRole !== 'admin' && userRole !== 'teacher') { 
-            alert('Access Denied: Only admin and teachers can manage student data.');
-            return;
-        }
-        const form = e.target;
-        const id = document.getElementById('studentId').value;
-        const fullName = document.getElementById('studentFullName').value;
-        const fatherName = document.getElementById('studentFatherName').value;
-        const motherName = document.getElementById('studentMotherName').value;
-        const studentClass = document.getElementById('studentClass').value;
-        const rollNo = document.getElementById('studentRollNo').value;
-        const aadharNo = document.getElementById('studentAadharNo').value;
-        const email = document.getElementById('studentEmail').value;
-        const phone = document.getElementById('studentPhone').value;
-        const status = document.getElementById('studentStatus').value;
-
-        const studentData = {
-            name: fullName,
-            father_name: fatherName,
-            mother_name: motherName,
-            class: studentClass,
-            roll_no: rollNo,
-            aadhar_no: aadharNo,
-            email: email,
-            phone: phone,
-            status: status,
-        };
-
-        let operationSuccess = false;
-        let auditAction = '';
-        let auditDetails = '';
-
-        try {
-            if (id) {
-                const { error } = await supabase.from('students').update(studentData).eq('id', id);
-                if (error) throw error;
-                alert('Student updated successfully!');
-                operationSuccess = true;
-                auditAction = 'Updated Student';
-                auditDetails = `Updated student: ${fullName} (ID: ${id})`;
-            } else {
-                const { data, error } = await supabase.from('students').insert([studentData]).select();
-                if (error) throw error;
-                alert('Student added successfully!');
-                operationSuccess = true;
-                auditAction = 'Added Student';
-                auditDetails = `Added new student: ${fullName} (ID: ${data[0].id})`;
-            }
-        } catch (error) {
-            alert((id ? 'Error updating' : 'Error adding') + ' student: ' + error.message);
-            console.error('Supabase error:', error);
-            auditAction = (id ? 'Update Student Failed' : 'Add Student Failed');
-            auditDetails = `Error: ${error.message}`;
-        }
-
-        if (operationSuccess) {
-            await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Students', auditDetails);
-            await fetchStudents();
-            if (studentModal) {
-                studentModal.classList.add('hidden');
-                studentModal.style.display = 'none';
-            }
-            form.reset();
-        }
-    });
-}
-
-// Add/Edit Teacher Form Submission
-if (teacherForm) {
-    teacherForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin') {
-            alert('Access Denied: Only admin can manage teacher data.');
-            return;
-        }
-        const form = e.target;
-        const id = document.getElementById('teacherId').value;
-        const fullName = document.getElementById('teacherFullName').value;
-        const subject = document.getElementById('teacherSubject').value;
-        const email = document.getElementById('teacherEmail').value;
-        const classes = document.getElementById('teacherClasses').value;
-
-        const teacherData = {
-            name: fullName,
-            subject: subject,
-            email: email,
-            classes: classes,
-        };
-
-        let operationSuccess = false;
-        let auditAction = '';
-        let auditDetails = '';
-
-        try {
-            if (id) {
-                const { error } = await supabase.from('teachers').update(teacherData).eq('id', id);
-                if (error) throw error;
-                alert('Teacher updated successfully!');
-                operationSuccess = true;
-                auditAction = 'Updated Teacher';
-                auditDetails = `Updated teacher: ${fullName} (ID: ${id})`;
-            } else {
-                const { data, error } = await supabase.from('teachers').insert([teacherData]).select();
-                if (error) throw error;
-                alert('Teacher added successfully!');
-                operationSuccess = true;
-                auditAction = 'Added Teacher';
-                auditDetails = `Added new teacher: ${fullName} (ID: ${data[0].id})`;
-            }
-        } catch (error) {
-            alert((id ? 'Error updating' : 'Error adding') + ' teacher: ' + error.message);
-            console.error('Supabase error:', error);
-            auditAction = (id ? 'Update Teacher Failed' : 'Add Teacher Failed');
-            auditDetails = `Error: ${error.message}`;
-        }
-
-        if (operationSuccess) {
-            await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Teachers', auditDetails);
-            await fetchTeachers();
-            if (teacherModal) {
-                teacherModal.classList.add('hidden');
-                teacherModal.style.display = 'none';
-            }
-            form.reset();
-        }
-    });
-}
-
-// Add/Edit User Form Submission (Interacts with Supabase Auth and Profiles table)
-if (userForm) {
-    userForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        const currentUserRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (currentUserRole !== 'admin') {
-            alert('Access Denied: Only admin can manage user accounts.');
-            return;
-        }
-        const form = e.target;
-        const id = document.getElementById('userId').value;
-        const fullName = document.getElementById('userFullName').value;
-        const email = document.getElementById('userEmail').value;
-        const role = document.getElementById('userRole').value;
-        const password = document.getElementById('userPassword').value;
-        const status = document.getElementById('userStatus').value;
-
-        let operationSuccess = false;
-        let auditAction = '';
-        let auditDetails = '';
-
-        try {
-            if (id) {
-                // Update existing user profile
-                const profileData = {
-                    full_name: fullName,
-                    email: email,
-                    role: role,
-                    status: status
-                };
-                const { error: profileError } = await supabase.from('profiles').update(profileData).eq('id', id);
-                if (profileError) throw profileError;
-
-                // Update Supabase Auth user metadata (requires service role key for other users)
-                // For self-update, client-side auth.updateUser is sufficient.
-                if (loggedInUser.id === id) {
-                    const { data, error: authUpdateError } = await supabase.auth.updateUser({
-                        email: email,
-                        data: {
-                            name: fullName,
-                            role: role
-                        }
-                    });
-                    if (authUpdateError) throw authUpdateError;
-                    localStorage.setItem('loggedInUser', JSON.stringify(data.user)); // Update local storage
-                    updateLoggedInUserName();
-                } else {
-                    // For updating other users, use admin API (requires service role key)
-                    const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // <<< REPLACE THIS WITH YOUR ACTUAL SERVICE ROLE KEY
-                    if (SERVICE_ROLE_KEY === 'YOUR_SERVICE_ROLE_KEY' || !SERVICE_ROLE_KEY) {
-                        alert('Service Role Key is not configured. Cannot update other user roles/emails from client-side.');
-                        // Proceed with profile update success, but log auth update failure
-                        auditAction = 'Updated User Profile (Auth Update Failed)';
-                        auditDetails = `Updated profile for ${fullName} (ID: ${id}), but auth.users update failed due to missing service role key.`;
-                        operationSuccess = true; // Consider profile update as success
-                    } else {
-                        const { data, error: authUpdateError } = await supabase.auth.admin.updateUserById(id, {
-                            email: email,
-                            user_metadata: {
-                                name: fullName,
-                                role: role
-                            },
-                            // Optionally update password if provided
-                            password: password || undefined
-                        });
-                        if (authUpdateError) throw authUpdateError;
-                        auditAction = 'Updated User (Admin)';
-                        auditDetails = `Updated user ${fullName} (ID: ${id}) by admin.`;
-                        operationSuccess = true;
-                    }
-                }
-                if (!operationSuccess) { // If not already set by admin update logic
-                    alert('User profile updated successfully!');
-                    operationSuccess = true;
-                    auditAction = 'Updated User Profile';
-                    auditDetails = `Updated user profile: ${fullName} (ID: ${id})`;
-                }
-            } else {
-                // Create new user (requires service role key on server-side for setting role directly)
-                // This is client-side for demonstration, but in production, it should be a secure backend call.
-                const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // <<< REPLACE THIS WITH YOUR ACTUAL SERVICE ROLE KEY
-                if (SERVICE_ROLE_KEY === 'YOUR_SERVICE_ROLE_KEY' || !SERVICE_ROLE_KEY) {
-                    alert('Service Role Key is not configured. Cannot create user with specific role from client-side.');
-                    return;
-                }
-
-                const { data: newUser, error: signUpError } = await supabase.auth.admin.createUser({
-                    email: email,
-                    password: password,
-                    email_confirm: true, // Auto-confirm email for admin-created users
-                    user_metadata: {
-                        full_name: fullName,
-                        role: role
-                    }
-                });
-                if (signUpError) throw signUpError;
-
-                // Also create a profile entry for the new user
-                const { error: profileInsertError } = await supabase.from('profiles').insert([
-                    {
-                        id: newUser.user.id,
-                        full_name: fullName,
-                        email: email,
-                        role: role,
-                        status: 'Active' // Default status for new users
-                    }
-                ]);
-                if (profileInsertError) throw profileInsertError;
-
-                alert('User added successfully!');
-                operationSuccess = true;
-                auditAction = 'Added User';
-                auditDetails = `Added new user: ${fullName} (ID: ${newUser.user.id})`;
-            }
-        } catch (error) {
-            alert((id ? 'Error updating' : 'Error adding') + ' user: ' + error.message);
-            console.error('Supabase Auth/DB error:', error);
-            auditAction = (id ? 'Update User Failed' : 'Add User Failed');
-            auditDetails = `Error: ${error.message}`;
-        }
-
-        if (operationSuccess) {
-            await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'User Management', auditDetails);
-            await fetchProfiles(); // Re-fetch profiles to update the table
-            if (userModal) {
-                userModal.classList.add('hidden');
-                userModal.style.display = 'none';
-            }
-            form.reset();
-        }
-    });
-}
-
-// Add/Edit Announcement Form Submission
-if (announcementForm) {
-    announcementForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin' && userRole !== 'teacher') {
-            alert('Access Denied: Only admin and teachers can manage announcements.');
-            return;
-        }
-        const form = e.target;
-        const id = document.getElementById('announcementId').value;
-        const title = document.getElementById('announcementTitle').value;
-        const content = document.getElementById('announcementContent').value;
-        const status = document.getElementById('announcementStatus').value;
-        const datePosted = new Date().toISOString().split('T')[0];
-
-        const announcementData = {
-            title: title,
-            content: content,
-            date_posted: datePosted,
-            status: status
-        };
-
-        let operationSuccess = false;
-        let auditAction = '';
-        let auditDetails = '';
-
-        try {
-            if (id) {
-                const { error } = await supabase.from('announcements').update(announcementData).eq('id', id);
-                if (error) throw error;
-                alert('Announcement updated successfully!');
-                operationSuccess = true;
-                auditAction = 'Updated Announcement';
-                auditDetails = `Updated: "${title}" (ID: ${id})`;
-            } else {
-                const { data, error } = await supabase.from('announcements').insert([announcementData]).select();
-                if (error) throw error;
-                alert('Announcement published successfully!');
-                operationSuccess = true;
-                auditAction = 'Published Announcement';
-                auditDetails = `Published: "${title}"`;
-            }
-        } catch (error) {
-            alert((id ? 'Error updating' : 'Error publishing') + ' announcement: ' + error.message);
-            console.error('Supabase error:', error);
-            auditAction = (id ? 'Update Announcement Failed' : 'Publish Announcement Failed');
-            auditDetails = `Error: ${error.message}`;
-        }
-
-        if (operationSuccess) {
-            await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Announcements', auditDetails);
-            await fetchAnnouncements();
-            if (announcementModal) {
-                announcementModal.classList.add('hidden');
-                announcementModal.style.display = 'none';
-            }
-            form.reset();
-        }
-    });
-}
-
-// Student Attendance Form Submission
-if (attendanceForm) {
-    attendanceForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin' && userRole !== 'teacher') {
-            alert('Access Denied: Only admin and teachers can mark student attendance.');
-            return;
-        }
-        const form = e.target;
-        const id = document.getElementById('attendanceId').value;
-        const studentId = document.getElementById('attendanceStudentSelect').value;
-        const date = document.getElementById('attendanceDate').value;
-        const status = document.getElementById('attendanceStatus').value;
-        const remarks = document.getElementById('attendanceRemarks').value;
-
-        if (!studentId || !date || !status) {
-            alert('Please fill in all required fields.');
-            return;
-        }
-
-        const student = students.find(s => s.id === studentId);
-        if (!student) {
-            alert('Selected student not found.');
-            return;
-        }
-
-        const attendanceData = {
-            student_id: studentId,
-            date: date,
-            status: status,
-            remarks: remarks
-        };
-
-        let operationSuccess = false;
-        let auditAction = '';
-        let auditDetails = '';
-
-        try {
-            if (id) {
-                const { error } = await supabase.from('attendance_records').update(attendanceData).eq('id', id);
-                if (error) throw error;
-                alert('Attendance record updated successfully!');
-                operationSuccess = true;
-                auditAction = 'Updated Attendance';
-                auditDetails = `Updated attendance for ${student.name} on ${date} to ${status}`;
-            } else {
-                const { data, error } = await supabase.from('attendance_records').insert([attendanceData]).select();
-                if (error) throw error;
-                alert('Attendance marked successfully!');
-                operationSuccess = true;
-                auditAction = 'Marked Attendance';
-                auditDetails = `Marked ${status} for ${student.name} on ${date}`;
-            }
-        } catch (error) {
-            alert((id ? 'Error updating' : 'Error marking') + ' attendance: ' + error.message);
-            console.error('Supabase error:', error);
-            auditAction = (id ? 'Update Attendance Failed' : 'Mark Attendance Failed');
-            auditDetails = `Error: ${error.message}`;
-        }
-
-        if (operationSuccess) {
-            await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Attendance', auditDetails);
-            await fetchAttendanceRecords();
-            if (attendanceModal) {
-                attendanceModal.classList.add('hidden');
-                attendanceModal.style.display = 'none';
-            }
-            form.reset();
-        }
-    });
-}
-
-// Teacher Attendance Form Submission
-if (teacherAttendanceForm) {
-    teacherAttendanceForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin') {
-            alert('Access Denied: Only admin can manage teacher attendance.');
-            return;
-        }
-        const form = e.target;
-        const id = document.getElementById('teacherAttendanceId').value;
-        const teacherId = document.getElementById('teacherAttendanceTeacherSelect').value;
-        const date = document.getElementById('teacherAttendanceDate').value;
-        const status = document.getElementById('teacherAttendanceStatus').value;
-        const remarks = document.getElementById('teacherAttendanceRemarks').value;
-
-        if (!teacherId || !date || !status) {
-            alert('Please fill in all required fields.');
-            return;
-        }
-
-        const teacher = teachers.find(t => t.id === teacherId);
-        if (!teacher) {
-            alert('Selected teacher not found.');
-            return;
-        }
-
-        const teacherAttendanceData = {
-            teacher_id: teacherId,
-            date: date,
-            status: status,
-            remarks: remarks
-        };
-
-        let operationSuccess = false;
-        let auditAction = '';
-        let auditDetails = '';
-
-        try {
-            if (id) {
-                const { error } = await supabase.from('teacher_attendance_records').update(teacherAttendanceData).eq('id', id);
-                if (error) throw error;
-                alert('Teacher attendance record updated successfully!');
-                operationSuccess = true;
-                auditAction = 'Updated Teacher Attendance';
-                auditDetails = `Updated attendance for ${teacher.name} on ${date} to ${status}`;
-            } else {
-                const { data, error } = await supabase.from('teacher_attendance_records').insert([teacherAttendanceData]).select();
-                if (error) throw error;
-                alert('Teacher attendance marked successfully!');
-                operationSuccess = true;
-                auditAction = 'Marked Teacher Attendance';
-                auditDetails = `Marked ${status} for ${teacher.name} on ${date}`;
-            }
-        } catch (error) {
-            alert((id ? 'Error updating' : 'Error marking') + ' teacher attendance: ' + error.message);
-            console.error('Supabase error:', error);
-            auditAction = (id ? 'Update Teacher Attendance Failed' : 'Mark Teacher Attendance Failed');
-            auditDetails = `Error: ${error.message}`;
-        }
-
-        if (operationSuccess) {
-            await addAuditLog(loggedInUser?.email || 'admin', auditAction, 'Teacher Attendance', auditDetails);
-            await fetchTeacherAttendanceRecords();
-            if (teacherAttendanceModal) {
-                teacherAttendanceModal.classList.add('hidden');
-                teacherAttendanceModal.style.display = 'none';
-            }
-            form.reset();
-        }
-    });
-}
-
-// --- WebAuthn Integration ---
+// --- WebAuthn Integration (from script1.js, adapted) ---
 
 // Student Fingerprint Registration
 if (registerStudentFingerprintBtn) {
     registerStudentFingerprintBtn.addEventListener('click', async () => {
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin' && userRole !== 'teacher') {
-            alert('Access Denied: Only admin and teachers can register student fingerprints.');
+        const currentUserRole = localStorage.getItem('loggedInUserRole');
+        if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+            showToast('Access Denied: Only admin and teachers can register student fingerprints.', 'error');
             return;
         }
         const studentId = attendanceStudentSelect.value;
         if (!studentId) {
-            alert('Please select a student first.');
+            showToast('Please select a student first.', 'warning');
             return;
         }
         const student = students.find(s => s.id === studentId);
         if (!student) {
-            alert('Selected student not found.');
+            showToast('Selected student not found.', 'error');
             return;
         }
+
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
 
         try {
             const challenge = new Uint8Array(16);
@@ -2976,7 +3179,7 @@ if (registerStudentFingerprintBtn) {
                     user: {
                         id: new TextEncoder().encode(student.id),
                         name: student.email || student.id,
-                        displayName: student.name
+                        displayName: student.full_name
                     },
                     challenge: challenge,
                     pubKeyCredParams: [{
@@ -3007,13 +3210,13 @@ if (registerStudentFingerprintBtn) {
 
             if (error) throw error;
 
-            alert(`Fingerprint registered successfully for ${student.name}!`);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Registered Fingerprint', 'Attendance', `Registered fingerprint for student: ${student.name} (ID: ${student.id})`);
-            await fetchStudents();
+            showToast(`Fingerprint registered successfully for ${student.full_name}!`, 'success');
+            await addAuditLog(loggedInUserEmail, 'Registered Fingerprint', 'Attendance', `Registered fingerprint for student: ${student.full_name} (ID: ${student.id})`);
+            await loadStudents(); // Reload students to update data
         } catch (error) {
             console.error("Fingerprint registration failed:", error);
-            alert(`Fingerprint registration failed: ${error.message || error}`);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Fingerprint Registration Failed', 'Attendance', `Failed to register fingerprint for student: ${student.name} - ${error.message}`);
+            showToast(`Fingerprint registration failed: ${error.message || error}`, 'error');
+            await addAuditLog(loggedInUserEmail, 'Fingerprint Registration Failed', 'Attendance', `Failed to register fingerprint for student: ${student.full_name} - ${error.message}`);
         }
     });
 }
@@ -3021,28 +3224,28 @@ if (registerStudentFingerprintBtn) {
 // Student Fingerprint Verification
 if (verifyStudentFingerprintBtn) {
     verifyStudentFingerprintBtn.addEventListener('click', async () => {
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
+        const currentUserRole = localStorage.getItem('loggedInUserRole');
         // Allow admin, teacher, or student (if they have a fingerprint registered for themselves) to verify
-        if (!['admin', 'teacher', 'student'].includes(userRole)) {
-            alert('Access Denied: You do not have permission to verify student fingerprints.');
+        if (!['admin', 'teacher', 'student'].includes(currentUserRole)) {
+            showToast('Access Denied: You do not have permission to verify student fingerprints.', 'error');
             return;
         }
         const studentId = attendanceStudentSelect.value;
         if (!studentId) {
-            alert('Please select a student first.');
+            showToast('Please select a student first.', 'warning');
             return;
         }
         const student = students.find(s => s.id === studentId);
         if (!student) {
-            alert('Selected student not found.');
+            showToast('Selected student not found.', 'error');
             return;
         }
         if (!student.fingerprint_credential) {
-            alert('No fingerprint registered for this student. Please register one first.');
+            showToast('No fingerprint registered for this student. Please register one first.', 'warning');
             return;
         }
+
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
 
         try {
             const challenge = new Uint8Array(16);
@@ -3060,14 +3263,15 @@ if (verifyStudentFingerprintBtn) {
                 }
             });
 
-            alert(`Fingerprint verified successfully for ${student.name}! Attendance marked as Present.`);
-            document.getElementById('attendanceStatus').value = 'Present';
-            document.getElementById('attendanceFormSubmitBtn').click(); // Automatically submit attendance
-            await addAuditLog(loggedInUser?.email || 'System', 'Verified Fingerprint', 'Attendance', `Verified fingerprint for student: ${student.name} (ID: ${student.id}) - Marked Present`);
+            showToast(`Fingerprint verified successfully for ${student.full_name}! Attendance marked as Present.`, 'success');
+            if (attendanceStatusSelect) attendanceStatusSelect.value = 'Present';
+            // Automatically submit attendance form
+            if (attendanceFormSubmitBtn) attendanceFormSubmitBtn.click();
+            await addAuditLog(loggedInUserEmail, 'Verified Fingerprint', 'Attendance', `Verified fingerprint for student: ${student.full_name} (ID: ${student.id}) - Marked Present`);
         } catch (error) {
             console.error("Fingerprint verification failed:", error);
-            alert(`Fingerprint verification failed: ${error.message || error}`);
-            await addAuditLog(loggedInUser?.email || 'System', 'Fingerprint Verification Failed', 'Attendance', `Failed to verify fingerprint for student: ${student.name} - ${error.message}`);
+            showToast(`Fingerprint verification failed: ${error.message || error}`, 'error');
+            await addAuditLog(loggedInUserEmail, 'Fingerprint Verification Failed', 'Attendance', `Failed to verify fingerprint for student: ${student.full_name} - ${error.message}`);
         }
     });
 }
@@ -3075,23 +3279,23 @@ if (verifyStudentFingerprintBtn) {
 // Teacher Fingerprint Registration
 if (registerTeacherFingerprintBtn) {
     registerTeacherFingerprintBtn.addEventListener('click', async () => {
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin') {
-            alert('Access Denied: Only admin can register teacher fingerprints.');
+        const currentUserRole = localStorage.getItem('loggedInUserRole');
+        if (currentUserRole !== 'admin') {
+            showToast('Access Denied: Only admin can register teacher fingerprints.', 'error');
             return;
         }
         const teacherId = teacherAttendanceTeacherSelect.value;
         if (!teacherId) {
-            alert('Please select a teacher first.');
+            showToast('Please select a teacher first.', 'warning');
             return;
         }
         const teacher = teachers.find(t => t.id === teacherId);
         if (!teacher) {
-            alert('Selected teacher not found.');
+            showToast('Selected teacher not found.', 'error');
             return;
         }
+
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
 
         try {
             const challenge = new Uint8Array(16);
@@ -3105,7 +3309,7 @@ if (registerTeacherFingerprintBtn) {
                     user: {
                         id: new TextEncoder().encode(teacher.id),
                         name: teacher.email || teacher.id,
-                        displayName: teacher.name
+                        displayName: teacher.full_name
                     },
                     challenge: challenge,
                     pubKeyCredParams: [{
@@ -3136,13 +3340,13 @@ if (registerTeacherFingerprintBtn) {
 
             if (error) throw error;
 
-            alert(`Fingerprint registered successfully for ${teacher.name}!`);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Registered Fingerprint', 'Attendance', `Registered fingerprint for teacher: ${teacher.name} (ID: ${teacher.id})`);
-            await fetchTeachers();
+            showToast(`Fingerprint registered successfully for ${teacher.full_name}!`, 'success');
+            await addAuditLog(loggedInUserEmail, 'Registered Fingerprint', 'Attendance', `Registered fingerprint for teacher: ${teacher.full_name} (ID: ${teacher.id})`);
+            await loadTeachers(); // Reload teachers to update data
         } catch (error) {
             console.error("Fingerprint registration failed:", error);
-            alert(`Fingerprint registration failed: ${error.message || error}`);
-            await addAuditLog(loggedInUser?.email || 'admin', 'Fingerprint Registration Failed', 'Attendance', `Failed to register fingerprint for teacher: ${teacher.name} - ${error.message}`);
+            showToast(`Fingerprint registration failed: ${error.message || error}`, 'error');
+            await addAuditLog(loggedInUserEmail, 'Fingerprint Registration Failed', 'Attendance', `Failed to register fingerprint for teacher: ${teacher.full_name} - ${error.message}`);
         }
     });
 }
@@ -3150,27 +3354,27 @@ if (registerTeacherFingerprintBtn) {
 // Teacher Fingerprint Verification
 if (verifyTeacherFingerprintBtn) {
     verifyTeacherFingerprintBtn.addEventListener('click', async () => {
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-        const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-        if (userRole !== 'admin' && userRole !== 'teacher') {
-            alert('Access Denied: You do not have permission to verify teacher fingerprints.');
+        const currentUserRole = localStorage.getItem('loggedInUserRole');
+        if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+            showToast('Access Denied: You do not have permission to verify teacher fingerprints.', 'error');
             return;
         }
         const teacherId = teacherAttendanceTeacherSelect.value;
         if (!teacherId) {
-            alert('Please select a teacher first.');
+            showToast('Please select a teacher first.', 'warning');
             return;
         }
         const teacher = teachers.find(t => t.id === teacherId);
         if (!teacher) {
-            alert('Selected teacher not found.');
+            showToast('Selected teacher not found.', 'error');
             return;
         }
         if (!teacher.fingerprint_credential) {
-            alert('No fingerprint registered for this teacher. Please register one first.');
+            showToast('No fingerprint registered for this teacher. Please register one first.', 'warning');
             return;
         }
+
+        const loggedInUserEmail = localStorage.getItem('loggedInUserName');
 
         try {
             const challenge = new Uint8Array(16);
@@ -3188,22 +3392,23 @@ if (verifyTeacherFingerprintBtn) {
                 }
             });
 
-            alert(`Fingerprint verified successfully for ${teacher.name}! Attendance marked as Present.`);
-            document.getElementById('teacherAttendanceStatus').value = 'Present';
-            document.getElementById('teacherAttendanceFormSubmitBtn').click(); // Automatically submit attendance
-            await addAuditLog(loggedInUser?.email || 'System', 'Verified Fingerprint', 'Teacher Attendance', `Verified fingerprint for teacher: ${teacher.name} (ID: ${teacher.id})`);
+            showToast(`Fingerprint verified successfully for ${teacher.full_name}! Attendance marked as Present.`, 'success');
+            if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = 'Present';
+            // Automatically submit attendance form
+            if (teacherAttendanceFormSubmitBtn) teacherAttendanceFormSubmitBtn.click();
+            await addAuditLog(loggedInUserEmail, 'Verified Fingerprint', 'Teacher Attendance', `Verified fingerprint for teacher: ${teacher.full_name} (ID: ${teacher.id})`);
         } catch (error) {
             console.error("Fingerprint verification failed:", error);
-            alert(`Fingerprint verification failed: ${error.message || error}`);
-            await addAuditLog(loggedInUser?.email || 'System', 'Fingerprint Verification Failed', 'Teacher Attendance', `Failed to verify fingerprint for teacher: ${teacher.name} - ${error.message}`);
+            showToast(`Fingerprint verification failed: ${error.message || error}`, 'error');
+            await addAuditLog(loggedInUserEmail, 'Fingerprint Verification Failed', 'Teacher Attendance', `Failed to verify fingerprint for teacher: ${teacher.full_name} - ${error.message}`);
         }
     });
 }
 
-// Export to Excel Functionality
+// --- Export to Excel Functionality (from script1.js) ---
 function exportToExcel(data, filename) {
     if (typeof XLSX === 'undefined') {
-        alert('Excel export library (SheetJS) not loaded. Please ensure it is included in your HTML.');
+        showToast('Excel export library (SheetJS) not loaded. Please ensure it is included in your HTML.', 'error');
         console.error('XLSX library is not available. Please ensure it is included in your HTML.');
         return;
     }
@@ -3215,16 +3420,14 @@ function exportToExcel(data, filename) {
 
 // Export Students to Excel
 window.exportStudentsToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can export student data.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can export student data.', 'error');
         return;
     }
     const studentData = students.map(student => ({
         ID: student.id,
-        Name: student.name,
+        Name: student.full_name,
         "Father's_Name": student.father_name,
         "Mother's_Name": student.mother_name,
         Class: student.class,
@@ -3235,35 +3438,34 @@ window.exportStudentsToExcel = function() {
         Status: student.status
     }));
     exportToExcel(studentData, 'students_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'Students', 'Exported student data to Excel.');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'Students', 'Exported student data to Excel.');
 }
 
 // Export Teachers to Excel
 window.exportTeachersToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can export teacher data.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can export teacher data.', 'error');
         return;
     }
     const teacherData = teachers.map(teacher => ({
         ID: teacher.id,
-        Name: teacher.name,
+        Name: teacher.full_name,
         Subject: teacher.subject,
         Email: teacher.email,
         Classes: teacher.classes
     }));
     exportToExcel(teacherData, 'teachers_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'Teachers', 'Exported teacher data to Excel.');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'Teachers', 'Exported teacher data to Excel.');
 }
 
 // Export Users to Excel (Now exports from profiles data)
 window.exportUsersToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can export user data.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can export user data.', 'error');
         return;
     }
     const userData = profiles.map(profile => ({
@@ -3274,16 +3476,15 @@ window.exportUsersToExcel = function() {
         Status: profile.status
     }));
     exportToExcel(userData, 'users_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'User Management', 'Exported user profile data to Excel.');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'User Management', 'Exported user profile data to Excel.');
 }
 
 // Export Payroll to Excel
 window.exportPayrollToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can export payroll data.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can export payroll data.', 'error');
         return;
     }
     const payrollData = payrollEntries.map(entry => ({
@@ -3293,35 +3494,33 @@ window.exportPayrollToExcel = function() {
         Status: entry.status
     }));
     exportToExcel(payrollData, 'payroll_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'Payroll', 'Exported payroll data to Excel.');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'Payroll', 'Exported payroll data to Excel.');
 }
 
 // Export Invoices to Excel
 window.exportInvoicesToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can export invoice data.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can export invoice data.', 'error');
         return;
     }
     const invoiceData = invoices.map(invoice => ({
         Invoice_Number: invoice.invoice_number,
-        Date: invoice.date,
+        Date: invoice.invoice_date,
         Amount: invoice.amount,
         Status: invoice.status
     }));
     exportToExcel(invoiceData, 'invoices_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'Finance', 'Exported invoice data to Excel.');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'Finance', 'Exported invoice data to Excel.');
 }
 
 // Export Announcements to Excel
 window.exportAnnouncementsToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can export announcements.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can export announcements.', 'error');
         return;
     }
     const announcementData = announcements.map(announcement => ({
@@ -3331,119 +3530,51 @@ window.exportAnnouncementsToExcel = function() {
         Status: announcement.status
     }));
     exportToExcel(announcementData, 'announcements_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'Announcements', 'Exported announcement data to Excel.');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'Announcements', 'Exported announcement data to Excel.');
 }
 
 // Export Student Attendance to Excel
 window.exportStudentAttendanceToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin' && userRole !== 'teacher') {
-        alert('Access Denied: Only admin and teachers can export student attendance data.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can export student attendance data.', 'error');
         return;
     }
-    const attendanceExportData = attendanceRecords.map(record => {
+    const attendanceExportData = studentAttendanceRecords.map(record => {
         const student = students.find(s => s.id === record.student_id);
         return {
-            Student_Name: student ? student.name : 'Unknown',
+            Student_Name: student ? student.full_name : 'Unknown',
             Roll_No: student ? student.roll_no : 'N/A',
             Class: student ? student.class : 'N/A',
-            Date: record.date,
+            Date: new Date(record.attendance_date).toLocaleDateString(),
             Status: record.status,
             Remarks: record.remarks
         };
     });
     exportToExcel(attendanceExportData, 'student_attendance_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'Attendance', 'Exported student attendance data to Excel.');
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'Attendance', 'Exported student attendance data to Excel.');
 }
 
 // Export Teacher Attendance to Excel
 window.exportTeacherAttendanceToExcel = function() {
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    // Updated role retrieval logic: raw_user_meta_data first, then app_metadata
-    const userRole = loggedInUser ? loggedInUser.raw_user_meta_data?.role || loggedInUser.app_metadata?.role : null;
-    if (userRole !== 'admin') {
-        alert('Access Denied: Only admin can export teacher attendance data.');
+    const currentUserRole = localStorage.getItem('loggedInUserRole');
+    if (currentUserRole !== 'admin') {
+        showToast('Access Denied: Only admin can export teacher attendance data.', 'error');
         return;
     }
     const teacherAttendanceExportData = teacherAttendanceRecords.map(record => {
         const teacher = teachers.find(t => t.id === record.teacher_id);
         return {
-            Teacher_Name: teacher ? teacher.name : 'Unknown',
+            Teacher_Name: teacher ? teacher.full_name : 'Unknown',
             Subject: teacher ? teacher.subject : 'N/A',
-            Date: record.date,
+            Date: new Date(record.attendance_date).toLocaleDateString(),
             Status: record.status,
             Remarks: record.remarks
         };
     });
     exportToExcel(teacherAttendanceExportData, 'teacher_attendance_data.xlsx');
-    addAuditLog(loggedInUser?.email || 'admin', 'Exported Data', 'Teacher Attendance', 'Exported teacher attendance data to Excel.');
-}
-
-// Dark Mode Toggle
-if (darkModeToggle) {
-    darkModeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        if (document.body.classList.contains('dark-mode')) {
-            localStorage.setItem('theme', 'dark');
-            darkModeIcon.classList.remove('fa-moon');
-            darkModeIcon.classList.add('fa-sun');
-        } else {
-            localStorage.setItem('theme', 'light');
-            darkModeIcon.classList.remove('fa-sun');
-            darkModeIcon.classList.add('fa-moon');
-        }
-    });
-}
-
-// Apply saved theme on load
-document.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        if (darkModeIcon) {
-            darkModeIcon.classList.remove('fa-moon');
-            darkModeIcon.classList.add('fa-sun');
-        }
-    } else {
-        document.body.classList.remove('dark-mode');
-        if (darkModeIcon) {
-            darkModeIcon.classList.remove('fa-sun');
-            darkModeIcon.classList.add('fa-moon');
-        }
-    }
-});
-
-// FIX: Added placeholder for startVoiceAssistant to resolve ReferenceError from index.html
-function startVoiceAssistant() {
-    alert('Voice assistant functionality is not yet implemented. This function is a placeholder.');
-    console.log('Voice assistant button clicked!');
-    // You can add actual voice assistant logic here, e.g., using Web Speech API
-    // Example:
-    /*
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        recognition.start();
-
-        recognition.onresult = (event) => {
-            const speechResult = event.results[0][0].transcript;
-            console.log('Speech Result:', speechResult);
-            alert('You said: ' + speechResult);
-            // Process speechResult here
-        };
-
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            alert('Speech recognition error: ' + event.error);
-        };
-    } else {
-        alert('Your browser does not support Web Speech API.');
-    }
-    */
+    const loggedInUserEmail = localStorage.getItem('loggedInUserName');
+    addAuditLog(loggedInUserEmail, 'Exported Data', 'Teacher Attendance', 'Exported teacher attendance data to Excel.');
 }
