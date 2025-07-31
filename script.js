@@ -752,7 +752,7 @@ function updateUIElementsForRole(role) {
 
 
 // Check login status on load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => { // Made the callback async
     // Always show the login UI initially to prevent auto-login on refresh
     showLoginUi();
 
@@ -773,6 +773,95 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     */
+    applyTheme();
+    // Removed loadNotifications() as it's not defined in the provided context
+    // and seems to be a placeholder for a Supabase-backed notification system.
+
+    // Check Supabase session initially
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('Initial Supabase session check. Session:', session, 'Error:', error); // DEBUG
+
+    if (session) {
+        // User is logged in via Supabase Auth
+        const userEmail = session.user?.email; // Safely access email
+        const userData = await fetchUserData(userEmail); // Using the new function
+
+        if (!userData) {
+            console.error('Error fetching user data from public.profiles: User data not found or inconsistent. Forcing logout.');
+            showToast('Failed to retrieve user role. Please log in again.', 'error');
+            await supabase.auth.signOut(); // Force logout if user data is inconsistent
+            showLoginUi();
+            return;
+        }
+
+        localStorage.setItem('loggedInUserRole', userData.role);
+        localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+        console.log('Session found on DOMContentLoaded. Calling showSchoolSiteUi().'); // DEBUG
+        showSchoolSiteUi();
+    } else {
+        // No active session, show login UI
+        console.log('No session found on DOMContentLoaded. Calling showLoginUi().'); // DEBUG
+        showLoginUi();
+    }
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN') {
+            // Explicitly fetch user profile
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session?.user.id)
+                .single();
+
+            if (profileError && profileError.code === 'PGRST116') { // No rows found
+                console.warn('No profile found for new user, creating one.');
+                // Create a profile for the newly signed-up user
+                await supabase
+                    .from('profiles')
+                    .upsert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        full_name: session.user.email.split('@')[0], // Default full name
+                        role: 'student', // Default role for new sign-ups
+                        status: 'Active'
+                    });
+            } else if (profileError) {
+                console.error('Profile fetch error on auth state change:', profileError);
+                showToast('Error fetching user profile. Please try again.', 'error');
+                await supabase.auth.signOut();
+                showLoginUi();
+                return;
+            }
+
+            // After handling profile, proceed with rendering the site
+            const userEmail = session.user.email;
+            const userData = await fetchUserData(userEmail);
+
+            if (!userData) {
+                console.error('Error fetching user data on auth state change: User data not found. Forcing logout.');
+                showToast('Failed to retrieve user role. Please log in again.', 'error');
+                await supabase.auth.signOut();
+                showLoginUi();
+                return;
+            }
+            localStorage.setItem('loggedInUserRole', userData.role);
+            localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+            showSchoolSiteUi();
+
+            // Added code: Fetch user data by ID and log it (for debugging)
+            const userId = session.user.id;
+            const { data, error: fetchError } = await supabase
+                .from('profiles') // Changed from 'users' to 'profiles'
+                .select('*')
+                .eq('id', userId);
+            console.log('User data from public.profiles table on auth state change (for debugging):', data);
+        } else if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('loggedInUserRole');
+            localStorage.removeItem('loggedInUserName');
+            showLoginUi();
+        }
+    });
 });
 
 // --- Login UI Logic ---
@@ -908,42 +997,44 @@ if (forgotPasswordForm) {
 
 // --- School Site UI Logic ---
 
-if (logoutButton) {
-    logoutButton.addEventListener('click', async function() {
-        if (confirm('Are you sure you want to logout?')) {
-            const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-            try {
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
+async function handleLogout() { // Made handleLogout an async function
+    if (confirm('Are you sure you want to logout?')) {
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
 
-                await addAuditLog(loggedInUser ? loggedInUser.email : 'Unknown', 'Logged Out', 'Authentication', 'User logged out');
-                localStorage.clear(); // Clear all local storage on logout
-                showLoginUi();
-                // Reset UI elements to default dashboard view
-                document.querySelectorAll('.module-content').forEach(m => m.classList.add('hidden'));
-                const dashboardMainContent = document.getElementById('dashboardMainContent');
-                const moduleTabs = document.getElementById('moduleTabs');
-                const modulesContainer = document.getElementById('modulesContainer');
+            await addAuditLog(loggedInUser ? loggedInUser.email : 'Unknown', 'Logged Out', 'Authentication', 'User logged out');
+            localStorage.clear(); // Clear all local storage on logout
+            showLoginUi();
+            // Reset UI elements to default dashboard view
+            document.querySelectorAll('.module-content').forEach(m => m.classList.add('hidden'));
+            const dashboardMainContent = document.getElementById('dashboardMainContent');
+            const moduleTabs = document.getElementById('moduleTabs');
+            const modulesContainer = document.getElementById('modulesContainer');
 
-                if (dashboardMainContent) dashboardMainContent.classList.remove('hidden');
-                if (moduleTabs) moduleTabs.classList.remove('hidden');
-                if (modulesContainer) modulesContainer.classList.add('hidden');
+            if (dashboardMainContent) dashboardMainContent.classList.remove('hidden');
+            if (moduleTabs) moduleTabs.classList.remove('hidden');
+            if (modulesContainer) modulesContainer.classList.add('hidden');
 
-                document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-                const dashboardNavItem = document.querySelector('.nav-item[data-module="dashboard"]');
-                if (dashboardNavItem) dashboardNavItem.classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            const dashboardNavItem = document.querySelector('.nav-item[data-module="dashboard"]');
+            if (dashboardNavItem) dashboardNavItem.classList.add('active');
 
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                const dashboardTab = document.querySelector('.tab[data-tab="dashboard"]');
-                if (dashboardTab) dashboardTab.classList.add('active');
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            const dashboardTab = document.querySelector('.tab[data-tab="dashboard"]');
+            if (dashboardTab) dashboardTab.classList.add('active');
 
-            } catch (error) {
-                console.error('Error logging out:', error);
-                alert('Error logging out: ' + error.message);
-                await addAuditLog(loggedInUser ? loggedInUser.email : 'Unknown', 'Logout Failed', 'Authentication', `Error: ${error.message}`);
-            }
+        } catch (error) {
+            console.error('Error logging out:', error);
+            alert('Error logging out: ' + error.message);
+            await addAuditLog(loggedInUser ? loggedInUser.email : 'Unknown', 'Logout Failed', 'Authentication', `Error: ${error.message}`);
         }
-    });
+    }
+}
+
+if (logoutButton) {
+    logoutButton.addEventListener('click', handleLogout);
 }
 
 
@@ -3364,247 +3455,6 @@ function toggleDarkMode() {
 if (darkModeToggle) {
     darkModeToggle.addEventListener('click', toggleDarkMode);
 }
-
-// Apply saved theme on load
-document.addEventListener('DOMContentLoaded', () => {
-    applyTheme();
-
-    // Initial event listeners that were outside DOMContentLoaded in original, but should be inside
-    // to ensure elements are loaded.
-    // This block was moved from the top-level execution to here.
-    if (loginForm) loginForm.addEventListener('submit', handleLogin);
-    if (forgotPasswordLink) forgotPasswordLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggleModal(forgotPasswordModal, true);
-    });
-    if (closeForgotPasswordModal) closeForgotPasswordModal.addEventListener('click', () => toggleModal(forgotPasswordModal, false));
-    if (forgotPasswordForm) forgotPasswordForm.addEventListener('submit', handleForgotPassword);
-
-    roleButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            roleButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            selectedRoleInput.value = button.dataset.role;
-        });
-    });
-
-    if (navItems) { // Check if navItems is defined
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const module = item.dataset.module;
-                showModule(module);
-            });
-        });
-    }
-
-    if (moduleTabs) { // Check if moduleTabs is defined
-        moduleTabs.addEventListener('click', (e) => {
-            if (e.target.classList.contains('tab')) {
-                const module = e.target.dataset.tab;
-                showModule(module);
-            }
-        });
-    }
-
-    document.querySelectorAll('.open-module').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            const module = e.target.dataset.module;
-            showModule(module);
-        });
-    });
-
-    if (userProfileToggle) userProfileToggle.addEventListener('click', () => {
-        if (userDropdown) userDropdown.classList.toggle('hidden');
-    });
-
-    if (logoutButton) logoutButton.addEventListener('click', handleLogout);
-
-    document.addEventListener('click', (event) => {
-        if (userProfileToggle && userDropdown && !userProfileToggle.contains(event.target) && !userDropdown.contains(event.target)) {
-            userDropdown.classList.add('hidden');
-        }
-        if (notificationButton && notificationDropdown && viewAllModal && !notificationButton.contains(event.target) && !notificationDropdown.contains(event.target) && !viewAllModal.contains(event.target)) {
-            notificationDropdown.classList.add('hidden');
-        }
-    });
-
-    if (notificationButton) notificationButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (notificationDropdown) notificationDropdown.classList.toggle('hidden');
-    });
-    if (markAllReadBtn) markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
-    if (viewAllNotificationsLink) viewAllNotificationsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        showAllNotifications();
-        if (notificationDropdown) toggleModal(notificationDropdown, false);
-    });
-    if (closeViewAllModal) closeViewAllModal.addEventListener('click', () => toggleModal(viewAllModal, false));
-    if (modalMarkAllReadBtn) modalMarkAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
-
-    if (darkModeToggle) darkModeToggle.addEventListener('click', toggleDarkMode);
-
-    // Modal close buttons
-    if (closeUserModal) closeUserModal.addEventListener('click', () => toggleModal(userModal, false));
-    if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', () => toggleModal(announcementModal, false));
-    if (closeStudentModal) closeStudentModal.addEventListener('click', () => toggleModal(studentModal, false));
-    if (closeTeacherModal) closeTeacherModal.addEventListener('click', () => toggleModal(teacherModal, false));
-    if (closePayrollModalBtn) closePayrollModalBtn.addEventListener('click', () => toggleModal(payrollModal, false));
-    if (closeAddInvoiceModalBtn) closeAddInvoiceModalBtn.addEventListener('click', () => toggleModal(addInvoiceModal, false));
-    if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', () => toggleModal(attendanceModal, false));
-    if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', () => toggleModal(teacherAttendanceModal, false));
-
-    // Student Module Specific Listeners
-    if (applySearchButton) applySearchButton.addEventListener('click', filterStudents);
-    if (searchRollInput) searchRollInput.addEventListener('input', filterStudents);
-    if (searchClassSelect) searchClassSelect.addEventListener('change', filterStudents);
-
-    // Attendance Module Specific Listeners
-    if (applyAttendanceFilter) applyAttendanceFilter.addEventListener('click', filterStudentAttendance);
-    if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('input', filterStudentAttendance);
-    if (attendanceClassFilter) attendanceClassFilter.addEventListener('change', filterStudentAttendance);
-    if (attendanceDateFilter) attendanceDateFilter.addEventListener('change', filterStudentAttendance);
-    if (registerStudentFingerprintBtn) registerStudentFingerprintBtn.addEventListener('click', () => {
-        showToast('Student fingerprint registration initiated (simulated).', 'info');
-    });
-    if (verifyStudentFingerprintBtn) verifyStudentFingerprintBtn.addEventListener('click', () => {
-        showToast('Student fingerprint verification initiated (simulated). Marking present if successful.', 'info');
-        if (attendanceStatusSelect) attendanceStatusSelect.value = 'Present';
-        showToast('Student marked Present via fingerprint (simulated).', 'success');
-    });
-
-    // Teacher Attendance Module Specific Listeners
-    if (applyTeacherAttendanceFilter) applyTeacherAttendanceFilter.addEventListener('click', filterTeacherAttendance);
-    if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('input', filterTeacherAttendance);
-    if (teacherAttendanceSubjectFilter) teacherAttendanceSubjectFilter.addEventListener('change', filterTeacherAttendance);
-    if (teacherAttendanceDateFilter) teacherAttendanceDateFilter.addEventListener('change', filterTeacherAttendance);
-    if (registerTeacherFingerprintBtn) registerTeacherFingerprintBtn.addEventListener('click', () => {
-        showToast('Teacher fingerprint registration initiated (simulated).', 'info');
-    });
-    if (verifyTeacherFingerprintBtn) verifyTeacherFingerprintBtn.addEventListener('click', () => {
-        showToast('Teacher fingerprint verification initiated (simulated). Marking present if successful.', 'info');
-        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = 'Present';
-        showToast('Teacher marked Present via fingerprint (simulated).', 'success');
-    });
-
-    // Forms
-    // Assuming these handlers are defined elsewhere or are placeholders
-    const profileFormSubmitHandler = () => console.log('Profile form submitted');
-    const profilePictureChangeHandler = () => console.log('Profile picture changed');
-    const userFormSubmitHandler = () => console.log('User form submitted');
-    const announcementFormSubmitHandler = () => console.log('Announcement form submitted');
-    const studentFormSubmitHandler = () => console.log('Student form submitted');
-    const teacherFormSubmitHandler = () => console.log('Teacher form submitted');
-    const payrollFormSubmitHandler = () => console.log('Payroll form submitted');
-    const addInvoiceFormSubmitHandler = () => console.log('Add Invoice form submitted');
-    const attendanceFormSubmitHandler = () => console.log('Attendance form submitted');
-    const teacherAttendanceFormSubmitHandler = () => console.log('Teacher Attendance form submitted');
-
-
-    if (profileForm) profileForm.addEventListener('submit', profileFormSubmitHandler);
-    if (profilePictureInput) profilePictureInput.addEventListener('change', profilePictureChangeHandler);
-    if (userForm) userForm.addEventListener('submit', userFormSubmitHandler);
-    if (announcementForm) announcementForm.addEventListener('submit', announcementFormSubmitHandler);
-    if (studentForm) studentForm.addEventListener('submit', studentFormSubmitHandler);
-    if (teacherForm) teacherForm.addEventListener('submit', teacherFormSubmitHandler);
-    if (payrollForm) payrollForm.addEventListener('submit', payrollFormSubmitHandler);
-    if (addInvoiceForm) addInvoiceForm.addEventListener('submit', addInvoiceFormSubmitHandler);
-    if (attendanceForm) attendanceForm.addEventListener('submit', attendanceFormSubmitHandler);
-    if (teacherAttendanceForm) teacherAttendanceForm.addEventListener('submit', teacherAttendanceFormSubmitHandler);
-
-
-    // --- Initial Load ---
-    console.log('DOMContentLoaded fired.'); // DEBUG
-    applyTheme();
-    await loadNotifications(); // Load notifications from Supabase
-
-    // Check Supabase session initially
-    const { data: { session }, error } = await supabase.auth.getSession();
-    console.log('Initial Supabase session check. Session:', session, 'Error:', error); // DEBUG
-
-    if (session) {
-        // User is logged in via Supabase Auth
-        const userEmail = session.user?.email; // Safely access email
-        const userData = await fetchUserData(userEmail); // Using the new function
-
-        if (!userData) {
-            console.error('Error fetching user data from public.profiles: User data not found or inconsistent. Forcing logout.');
-            showToast('Failed to retrieve user role. Please log in again.', 'error');
-            await supabase.auth.signOut(); // Force logout if user data is inconsistent
-            renderLoginUi();
-            return;
-        }
-
-        localStorage.setItem('loggedInUserRole', userData.role);
-        localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
-        console.log('Session found on DOMContentLoaded. Calling renderSchoolSite().'); // DEBUG
-        showSchoolSiteUi(); // Changed from renderSchoolSite() to showSchoolSiteUi()
-    } else {
-        // No active session, show login UI
-        console.log('No session found on DOMContentLoaded. Calling renderLoginUi().'); // DEBUG
-        showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
-    }
-
-    // Listen for auth state changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN') {
-            // Explicitly fetch user profile
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session?.user.id)
-                .single();
-
-            if (profileError && profileError.code === 'PGRST116') { // No rows found
-                console.warn('No profile found for new user, creating one.');
-                // Create a profile for the newly signed-up user
-                await supabase
-                    .from('profiles')
-                    .upsert({
-                        id: session.user.id,
-                        email: session.user.email,
-                        full_name: session.user.email.split('@')[0], // Default full name
-                        role: 'student', // Default role for new sign-ups
-                        status: 'Active'
-                    });
-            } else if (profileError) {
-                console.error('Profile fetch error on auth state change:', profileError);
-                showToast('Error fetching user profile. Please try again.', 'error');
-                await supabase.auth.signOut();
-                showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
-                return;
-            }
-
-            // After handling profile, proceed with rendering the site
-            const userEmail = session.user.email;
-            const userData = await fetchUserData(userEmail);
-
-            if (!userData) {
-                console.error('Error fetching user data on auth state change: User data not found. Forcing logout.');
-                showToast('Failed to retrieve user role. Please log in again.', 'error');
-                await supabase.auth.signOut();
-                showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
-                return;
-            }
-            localStorage.setItem('loggedInUserRole', userData.role);
-            localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
-            showSchoolSiteUi(); // Changed from renderSchoolSite() to showSchoolSiteUi()
-
-            // Added code: Fetch user data by ID and log it (for debugging)
-            const userId = session.user.id;
-            const { data, error: fetchError } = await supabase
-                .from('profiles') // Changed from 'users' to 'profiles'
-                .select('*')
-                .eq('id', userId);
-            console.log('User data from public.profiles table on auth state change (for debugging):', data);
-        } else if (event === 'SIGNED_OUT') {
-            localStorage.removeItem('loggedInUserRole');
-            localStorage.removeItem('loggedInUserName');
-            showLoginUi(); // Changed from renderLoginUi() to showLoginUi()
-        }
-    });
-});
 
 // FIX: Added placeholder for startVoiceAssistant to resolve ReferenceError from index.html
 function startVoiceAssistant() {
