@@ -87,149 +87,426 @@ function base64ToArrayBuffer(base64) {
 
 // --- Data Fetching Functions (from Supabase) ---
 
-async function fetchStudents() {
-    try {
-        const { data, error } = await supabase.from('students').select('*');
-        if (error) throw error;
-        students = data;
-    } catch (error) {
-        console.error('Error fetching students:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'students' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see student data (e.g., 'admin', 'teacher', 'student').
-        students = [];
-    } finally {
-        renderStudentTable();
-        updateDashboardStats();
+ // Reports Module
+    reportsModule = document.getElementById('reportsModule');
+    // attendanceChart and performanceChart are initialized later
+
+    // --- Event Listeners ---
+    loginForm.addEventListener('submit', handleLogin);
+    forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleModal(forgotPasswordModal, true);
+    });
+    closeForgotPasswordModal.addEventListener('click', () => toggleModal(forgotPasswordModal, false));
+    forgotPasswordForm.addEventListener('submit', handleForgotPassword);
+
+    roleButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            roleButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            selectedRoleInput.value = button.dataset.role;
+        });
+    });
+
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const module = item.dataset.module;
+            showModule(module);
+        });
+    });
+
+    moduleTabs.addEventListener('click', (e) => {
+        if (e.target.classList.contains('tab')) {
+            const module = e.target.dataset.tab;
+            showModule(module);
+        }
+    });
+
+    document.querySelectorAll('.open-module').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const module = e.target.dataset.module;
+            showModule(module);
+        });
+    });
+
+    userProfileToggle.addEventListener('click', () => {
+        userDropdown.classList.toggle('hidden');
+    });
+
+    logoutButton.addEventListener('click', handleLogout);
+
+    document.addEventListener('click', (event) => {
+        if (userProfileToggle && userDropdown && !userProfileToggle.contains(event.target) && !userDropdown.contains(event.target)) {
+            userDropdown.classList.add('hidden');
+        }
+        if (notificationButton && notificationDropdown && viewAllModal && !notificationButton.contains(event.target) && !notificationDropdown.contains(event.target) && !viewAllModal.contains(event.target)) {
+            notificationDropdown.classList.add('hidden');
+        }
+    });
+
+    notificationButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        notificationDropdown.classList.toggle('hidden');
+    });
+    markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+    viewAllNotificationsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        showAllNotifications();
+        toggleModal(notificationDropdown, false);
+    });
+    closeViewAllModal.addEventListener('click', () => toggleModal(viewAllModal, false));
+    modalMarkAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+
+    darkModeToggle.addEventListener('click', toggleDarkMode);
+
+    // Modal close buttons
+    if (closeUserModal) closeUserModal.addEventListener('click', () => toggleModal(userModal, false));
+    if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', () => toggleModal(announcementModal, false));
+    if (closeStudentModal) closeStudentModal.addEventListener('click', () => toggleModal(studentModal, false));
+    if (closeTeacherModal) closeTeacherModal.addEventListener('click', () => toggleModal(teacherModal, false));
+    if (closePayrollModalBtn) closePayrollModalBtn.addEventListener('click', () => toggleModal(payrollModal, false));
+    if (closeAddInvoiceModalBtn) closeAddInvoiceModalBtn.addEventListener('click', () => toggleModal(addInvoiceModal, false));
+    if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', () => toggleModal(attendanceModal, false));
+    if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', () => toggleModal(teacherAttendanceModal, false));
+
+    // Student Module Specific Listeners
+    if (applySearchButton) applySearchButton.addEventListener('click', filterStudents);
+    if (searchRollInput) searchRollInput.addEventListener('input', filterStudents);
+    if (searchClassSelect) searchClassSelect.addEventListener('change', filterStudents);
+
+    // Attendance Module Specific Listeners
+    if (applyAttendanceFilter) applyAttendanceFilter.addEventListener('click', filterStudentAttendance);
+    if (attendanceStudentNameFilter) attendanceStudentNameFilter.addEventListener('input', filterStudentAttendance);
+    if (attendanceClassFilter) attendanceClassFilter.addEventListener('change', filterStudentAttendance);
+    if (attendanceDateFilter) attendanceDateFilter.addEventListener('change', filterStudentAttendance);
+    if (registerStudentFingerprintBtn) registerStudentFingerprintBtn.addEventListener('click', () => {
+        showToast('Student fingerprint registration initiated (simulated).', 'info');
+    });
+    if (verifyStudentFingerprintBtn) verifyStudentFingerprintBtn.addEventListener('click', () => {
+        showToast('Student fingerprint verification initiated (simulated). Marking present if successful.', 'info');
+        if (attendanceStatusSelect) attendanceStatusSelect.value = 'Present';
+        showToast('Student marked Present via fingerprint (simulated).', 'success');
+    });
+
+    // Teacher Attendance Module Specific Listeners
+    if (applyTeacherAttendanceFilter) applyTeacherAttendanceFilter.addEventListener('click', filterTeacherAttendance);
+    if (teacherAttendanceNameFilter) teacherAttendanceNameFilter.addEventListener('input', filterTeacherAttendance);
+    if (teacherAttendanceSubjectFilter) teacherAttendanceSubjectFilter.addEventListener('change', filterTeacherAttendance);
+    if (teacherAttendanceDateFilter) teacherAttendanceDateFilter.addEventListener('change', filterTeacherAttendance);
+    if (registerTeacherFingerprintBtn) registerTeacherFingerprintBtn.addEventListener('click', () => {
+        showToast('Teacher fingerprint registration initiated (simulated).', 'info');
+    });
+    if (verifyTeacherFingerprintBtn) verifyTeacherFingerprintBtn.addEventListener('click', () => {
+        showToast('Teacher fingerprint verification initiated (simulated). Marking present if successful.', 'info');
+        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = 'Present';
+        showToast('Teacher marked Present via fingerprint (simulated).', 'success');
+    });
+
+    // Forms
+    if (profileForm) profileForm.addEventListener('submit', profileFormSubmitHandler);
+    if (profilePictureInput) profilePictureInput.addEventListener('change', profilePictureChangeHandler);
+    if (userForm) userForm.addEventListener('submit', userFormSubmitHandler);
+    if (announcementForm) announcementForm.addEventListener('submit', announcementFormSubmitHandler);
+    if (studentForm) studentForm.addEventListener('submit', studentFormSubmitHandler);
+    if (teacherForm) teacherForm.addEventListener('submit', teacherFormSubmitHandler);
+    if (payrollForm) payrollForm.addEventListener('submit', payrollFormSubmitHandler);
+    if (addInvoiceForm) addInvoiceForm.addEventListener('submit', addInvoiceFormSubmitHandler);
+    if (attendanceForm) attendanceForm.addEventListener('submit', attendanceFormSubmitHandler);
+    if (teacherAttendanceForm) teacherAttendanceForm.addEventListener('submit', teacherAttendanceFormSubmitHandler);
+
+
+    // --- Initial Load ---
+    console.log('DOMContentLoaded fired.'); // DEBUG
+    applyTheme();
+    await loadNotifications(); // Load notifications from Supabase
+
+    // Check Supabase session initially
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('Initial Supabase session check. Session:', session, 'Error:', error); // DEBUG
+
+    if (session) {
+        // User is logged in via Supabase Auth
+        const userEmail = session.user?.email; // Safely access email
+        const userData = await fetchUserData(userEmail); // Using the new function
+
+        if (!userData) {
+            console.error('Error fetching user data from public.profiles: User data not found or inconsistent. Forcing logout.');
+            showToast('Failed to retrieve user role. Please log in again.', 'error');
+            await supabase.auth.signOut(); // Force logout if user data is inconsistent
+            renderLoginUi();
+            return;
+        }
+
+        localStorage.setItem('loggedInUserRole', userData.role);
+        localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+        console.log('Session found on DOMContentLoaded. Calling renderSchoolSite().'); // DEBUG
+        renderSchoolSite();
+    } else {
+        // No active session, show login UI
+        console.log('No session found on DOMContentLoaded. Calling renderLoginUi().'); // DEBUG
+        renderLoginUi();
+    }
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN') {
+            // Explicitly fetch user profile
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session?.user.id)
+                .single();
+
+            if (profileError && profileError.code === 'PGRST116') { // No rows found
+                console.warn('No profile found for new user, creating one.');
+                // Create a profile for the newly signed-up user
+                await supabase
+                    .from('profiles')
+                    .upsert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        full_name: session.user.email.split('@')[0], // Default full name
+                        role: 'student', // Default role for new sign-ups
+                        status: 'Active'
+                    });
+            } else if (profileError) {
+                console.error('Profile fetch error on auth state change:', profileError);
+                showToast('Error fetching user profile. Please try again.', 'error');
+                await supabase.auth.signOut();
+                renderLoginUi();
+                return;
+            }
+
+            // After handling profile, proceed with rendering the site
+            const userEmail = session.user.email;
+            const userData = await fetchUserData(userEmail);
+
+            if (!userData) {
+                console.error('Error fetching user data on auth state change: User data not found. Forcing logout.');
+                showToast('Failed to retrieve user role. Please log in again.', 'error');
+                await supabase.auth.signOut();
+                renderLoginUi();
+                return;
+            }
+            localStorage.setItem('loggedInUserRole', userData.role);
+            localStorage.setItem('loggedInUserName', userData.full_name || userEmail.split('@')[0]);
+            renderSchoolSite();
+
+            // Added code: Fetch user data by ID and log it (for debugging)
+            const userId = session.user.id;
+            const { data, error: fetchError } = await supabase
+                .from('profiles') // Changed from 'users' to 'profiles'
+                .select('*')
+                .eq('id', userId);
+            console.log('User data from public.profiles table on auth state change (for debugging):', data);
+        } else if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('loggedInUserRole');
+            localStorage.removeItem('loggedInUserName');
+            renderLoginUi();
+        }
+    });
+});
+
+// --- Utility Functions ---
+
+/**
+ * Displays a toast notification.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification (e.g., 'success', 'error', 'info').
+ */
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toast-container') || (() => {
+        const div = document.createElement('div');
+        div.id = 'toast-container';
+        div.className = 'fixed bottom-4 right-4 z-[1000] space-y-2';
+        document.body.appendChild(div);
+        return div;
+    })();
+
+    const toast = document.createElement('div');
+    toast.className = `p-3 rounded-lg shadow-md text-white flex items-center space-x-2 animate-slideInRight`;
+
+    let bgColor = 'bg-gray-700';
+    let icon = '<i class="fas fa-info-circle"></i>';
+
+    switch (type) {
+        case 'success':
+            bgColor = 'bg-green-500';
+            icon = '<i class="fas fa-check-circle"></i>';
+            break;
+        case 'error':
+            bgColor = 'bg-red-500';
+            icon = '<i class="fas fa-times-circle"></i>';
+            break;
+        case 'warning':
+            bgColor = 'bg-yellow-500';
+            icon = '<i class="fas fa-exclamation-triangle"></i>';
+            break;
+        case 'info':
+        default:
+            bgColor = 'bg-blue-500';
+            icon = '<i class="fas fa-info-circle"></i>';
+            break;
+    }
+
+    toast.classList.add(bgColor);
+    toast.innerHTML = `${icon} <span>${message}</span>`;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('animate-slideOutRight');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 3000);
+}
+
+/**
+ * Toggles the visibility of a modal.
+ * @param {HTMLElement} modalElement - The modal element to toggle.
+ * @param {boolean} show - Whether to show or hide the modal.
+ */
+function toggleModal(modalElement, show) {
+    if (show) {
+        modalElement.classList.remove('hidden');
+        modalElement.classList.add('flex');
+    } else {
+        modalElement.classList.add('hidden');
+        modalElement.classList.remove('flex');
     }
 }
 
-async function fetchTeachers() {
+/**
+ * Types out a welcome message character by character.
+ * @param {string} message - The message to type.
+ * @param {HTMLElement} element - The DOM element to type into.
+ * @param {number} delay - Delay between characters in ms.
+ */
+function typeWriter(message, element, delay = 50) {
+    let i = 0;
+    element.textContent = ''; // Clear existing text
+    function type() {
+        if (i < message.length) {
+            element.textContent += message.charAt(i);
+            i++;
+            setTimeout(type, delay);
+        }
+    }
+    type();
+}
+
+/**
+ * Fetches data from Supabase.
+ * @param {string} tableName - The name of the table to fetch from.
+ * @param {string} [filterColumn] - Optional column to filter by.
+ * @param {string} [filterValue] - Optional value to filter by.
+ * @returns {Promise<Array>} - A promise that resolves to an array of data.
+ */
+async function fetchData(tableName, filterColumn = null, filterValue = null) {
     try {
-        const { data, error } = await supabase.from('teachers').select('*');
+        let query = supabase.from(tableName).select('*');
+        if (filterColumn && filterValue) {
+            query = query.eq(filterColumn, filterValue);
+        }
+        const { data, error } = await query;
         if (error) throw error;
-        teachers = data;
+        return data;
     } catch (error) {
-        console.error('Error fetching teachers:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'teachers' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see teacher data (e.g., 'admin', 'teacher').
-        teachers = [];
-    } finally {
-        renderTeacherTable();
-        updateDashboardStats();
+        console.error(`Error fetching ${tableName}:`, error.message);
+        showToast(`Error fetching ${tableName}: ${error.message}`, 'error');
+        return [];
     }
 }
 
-async function fetchPayrollEntries() {
+/**
+ * Inserts data into a Supabase table.
+ * @param {string} tableName - The name of the table to insert into.
+ * @param {object} record - The record to insert.
+ * @returns {Promise<object|null>} - A promise that resolves to the inserted record or null on error.
+ */
+async function insertData(tableName, record) {
     try {
-        const { data, error } = await supabase.from('payroll_entries').select('*');
+        const { data, error } = await supabase.from(tableName).insert([record]).select();
         if (error) throw error;
-        payrollEntries = data;
+        showToast(`${tableName.slice(0, -1)} added successfully!`, 'success');
+        return data[0];
     } catch (error) {
-        console.error('Error fetching payroll entries:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'payroll_entries' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see payroll data (e.g., 'admin').
-        payrollEntries = [];
-    } finally {
-        renderPayrollTable();
+        console.error(`Error adding ${tableName.slice(0, -1)}:`, error.message);
+        showToast(`Error adding ${tableName.slice(0, -1)}: ${error.message}`, 'error');
+        return null;
     }
 }
 
-async function fetchInvoices() {
+/**
+ * Updates data in a Supabase table.
+ * @param {string} tableName - The name of the table to update.
+ * @param {object} record - The record with updated data.
+ * @param {string} id - The ID of the record to update.
+ * @returns {Promise<object|null>} - A promise that resolves to the updated record or null on error.
+ */
+async function updateData(tableName, record, id) {
     try {
-        const { data, error } = await supabase.from('invoices').select('*');
+        const { data, error } = await supabase.from(tableName).update(record).eq('id', id).select();
         if (error) throw error;
-        invoices = data;
+        showToast(`${tableName.slice(0, -1)} updated successfully!`, 'success');
+        return data[0];
     } catch (error) {
-        console.error('Error fetching invoices:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'invoices' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see invoice data (e.g., 'admin').
-        invoices = [];
-    } finally {
-        renderFinanceTable();
-        updateDashboardStats();
+        console.error(`Error updating ${tableName.slice(0, -1)}:`, error.message);
+        showToast(`Error updating ${tableName.slice(0, -1)}: ${error.message}`, 'error');
+        return null;
     }
 }
 
-async function fetchAnnouncements() {
+/**
+ * Deletes data from a Supabase table.
+ * @param {string} tableName - The name of the table to delete from.
+ * @param {string} id - The ID of the record to delete.
+ * @returns {Promise<boolean>} - A promise that resolves to true if successful, false otherwise.
+ */
+async function deleteData(tableName, id) {
     try {
-        const { data, error } = await supabase.from('announcements').select('*');
+        const { error } = await supabase.from(tableName).delete().eq('id', id);
         if (error) throw error;
-        announcements = data;
+        showToast(`${tableName.slice(0, -1)} deleted successfully!`, 'success');
+        return true;
     } catch (error) {
-        console.error('Error fetching announcements:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'announcements' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see announcements (e.g., 'admin', 'teacher', 'student').
-        announcements = [];
-    } finally {
-        renderAnnouncementTable();
+        console.error(`Error deleting ${tableName.slice(0, -1)}:`, error.message);
+        showToast(`Error deleting ${tableName.slice(0, -1)}: ${error.message}`, 'error');
+        return false;
     }
 }
 
-async function fetchNotifications() {
-    // Notifications are still client-side for simplicity, but could be fetched from DB
-    notifications = JSON.parse(localStorage.getItem('notifications')) || [
-        { id: 1, title: "New student enrolled!", description: "Emily Johnson joined Grade 10.", time: "5 minutes ago", unread: true },
-        { id: 2, title: "Payroll processed", description: "March payroll completed for all staff.", time: "1 hour ago", unread: true },
-        { id: 3, title: "Event Reminder", description: "Parent-Teacher meeting tomorrow at 3 PM.", time: "Yesterday", unread: true },
-        { id: 4, title: "System Update", description: "System maintenance scheduled for Sunday.", time: "2 days ago", unread: false },
-    ];
-    renderDropdownNotifications();
-}
-
-async function fetchAuditLogs() {
+/**
+ * Fetches user data from the 'profiles' table by email.
+ * NOTE: This function now fetches from 'profiles' instead of 'users'.
+ * @param {string} userEmail - The email of the user to fetch.
+ * @returns {Promise<object|null>} - A promise that resolves to the user data or null on error.
+ */
+async function fetchUserData(email) {
     try {
-        const { data, error } = await supabase.from('audit_logs').select('*').order('timestamp', { ascending: false });
-        if (error) throw error;
-        auditLogs = data;
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', email)
+            .single(); // Use .single() to expect one record
+
+        if (error) {
+            // If no rows found, data will be null and error will indicate it
+            if (error.code === 'PGRST116') { // Supabase error code for no rows found
+                console.warn(`No user profile found with email: ${email}`);
+                return null;
+            }
+            throw new Error(`Error fetching user data: ${error.message}`);
+        }
+        return data;
+
     } catch (error) {
-        console.error('Error fetching audit logs:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'audit_logs' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see audit logs (e.g., 'admin').
-        auditLogs = [];
-    } finally {
-        renderAuditLogs();
-        renderRecentActivity();
+        console.error('Profile fetch error:', error);
+        return null;
     }
 }
 
-async function fetchBackups() {
-    // Backups are simulated, but could be fetched from a storage service
-    backups = JSON.parse(localStorage.getItem('backups')) || [
-        { id: 'B001', backup_id: 'BK20231026-001', date: '2023-10-26 02:00:00', size: '150 MB', type: 'Full' },
-        { id: 'B002', backup_id: 'BK20231025-001', date: '2023-10-25 02:00:00', size: '148 MB', type: 'Full' }
-    ];
-    renderBackupTable();
-}
-
-async function fetchAttendanceRecords() {
-    try {
-        const { data, error } = await supabase.from('attendance_records').select('*');
-        if (error) throw error;
-        attendanceRecords = data;
-    } catch (error) {
-        console.error('Error fetching attendance records:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'attendance_records' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see attendance data (e.g., 'admin', 'teacher').
-        attendanceRecords = [];
-    } finally {
-        renderAttendanceTable();
-    }
-}
-
-async function fetchTeacherAttendanceRecords() {
-    try {
-        const { data, error } = await supabase.from('teacher_attendance_records').select('*');
-        if (error) throw error;
-        teacherAttendanceRecords = data;
-    } catch (error) {
-        console.error('Error fetching teacher attendance records:', error);
-        // This error (403 Forbidden) means your RLS policies on the 'teacher_attendance_records' table are preventing SELECT.
-        // Ensure you have a SELECT policy for the roles that should see teacher attendance data (e.g., 'admin').
-        teacherAttendanceRecords = [];
-    } finally {
-        renderTeacherAttendanceTable();
-    }
-}
 
 // --- Initial Data Load ---
 async function loadAllData() {
