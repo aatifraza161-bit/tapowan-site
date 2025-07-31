@@ -3,7 +3,7 @@
 // --- Global Variables ---
 
 let notifications = [];
-let users = []; // This will now refer to 'profiles' data
+let profiles = []; // Renamed from 'users' to match Supabase 'profiles' table
 let announcements = [];
 let students = [];
 let teachers = [];
@@ -12,17 +12,16 @@ let invoices = [];
 let studentAttendanceRecords = [];
 let teacherAttendanceRecords = [];
 let schoolEvents = [];
-let holidays = []; // Static holiday data from script1.js
-let auditLogs = []; // From script1.js
-let backups = []; // Simulated backups from script1.js
-let profiles = []; // New global variable for profiles, from script1.js
+let holidays = []; // Static holiday data
+let auditLogs = [];
+let backups = []; // Simulated backups
 
 // Supabase Client Initialization (Replace with your actual keys)
 const SUPABASE_URL = 'https://wjmvgdaoehgymnhzqeuv.supabase.co'; // Replace with your Supabase URL
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqbXZnZGFvZWhneW1uaHpxZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4NzM2ODgsImV4cCI6MjA2OTQ0OTY4OH0.NnrLIIu3e8DrkjcKtexZs50kV0kPYH25Oz7dc_lsiDA'; // Replace with your actual Supabase Anon Key
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Chart.js instances (from script1.js)
+// Chart.js instances
 let attendanceChartInstance = null;
 let performanceChartInstance = null;
 
@@ -45,7 +44,7 @@ let loginUi, schoolSiteUi, loginForm, emailInput, passwordInput, selectedRoleInp
     financeModule, financeTableBody, openAddInvoiceModalBtn, addInvoiceModal, closeAddInvoiceModalBtn, addInvoiceForm, invoiceNumberInput, invoiceDateInput, invoiceAmountInput, invoiceStatusSelect,
     attendanceModule, attendanceTableBody, attendanceModal, attendanceModalTitle, closeAttendanceModal, attendanceForm, attendanceIdInput, attendanceStudentSelect, attendanceDateInput, attendanceStatusSelect, attendanceRemarksTextarea, attendanceFormSubmitBtn, attendanceStudentNameFilter, attendanceClassFilter, attendanceDateFilter, applyAttendanceFilter, attendanceTotalStudents, attendanceTotalPresent, attendanceTotalAbsent, registerStudentFingerprintBtn, verifyStudentFingerprintBtn,
     teacherAttendanceModule, teacherAttendanceTableBody, teacherAttendanceModal, teacherAttendanceModalTitle, closeTeacherAttendanceModal, teacherAttendanceForm, teacherAttendanceIdInput, teacherAttendanceTeacherSelect, teacherAttendanceDateInput, teacherAttendanceStatusSelect, teacherAttendanceRemarksTextarea, teacherAttendanceFormSubmitBtn, teacherAttendanceNameFilter, teacherAttendanceSubjectFilter, teacherAttendanceDateFilter, applyTeacherAttendanceFilter, teacherAttendanceTotalTeachers, teacherAttendanceTotalPresent, teacherAttendanceTotalAbsent, registerTeacherFingerprintBtn, verifyTeacherFingerprintBtn,
-    calendarModule, fullCalendarEl, holidayListContainer, reportsModule; // Renamed holidayList to holidayListContainer to avoid conflict with global holidays array
+    calendarModule, fullCalendarEl, holidayListContainer, reportsModule;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize DOM element references
@@ -99,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     profilePictureInput = document.getElementById('profilePicture');
     profilePicturePreview = document.getElementById('profilePicturePreview');
     fullNameInput = document.getElementById('fullName');
-    profileEmailInput = document.getElementById('email'); // Note: This might conflict with login emailInput if not careful
+    profileEmailInput = document.getElementById('profileEmail'); // Corrected ID
     roleSelect = document.getElementById('role');
     phoneInput = document.getElementById('phone');
     addressTextarea = document.getElementById('address');
@@ -240,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Calendar Module
     calendarModule = document.getElementById('calendarModule');
     fullCalendarEl = document.getElementById('calendar-full');
-    holidayListContainer = document.getElementById('holidayList'); // Renamed
+    holidayListContainer = document.getElementById('holidayList');
 
     // Reports Module
     reportsModule = document.getElementById('reportsModule');
@@ -295,6 +294,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userProfileToggle && userDropdown && !userProfileToggle.contains(event.target) && !userDropdown.contains(event.target)) {
             userDropdown.classList.add('hidden');
         }
+        // Check if notificationDropdown exists before trying to access its properties
         if (notificationButton && notificationDropdown && viewAllModal && !notificationButton.contains(event.target) && !notificationDropdown.contains(event.target) && !viewAllModal.contains(event.target)) {
             notificationDropdown.classList.add('hidden');
         }
@@ -320,7 +320,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (closeAnnouncementModal) closeAnnouncementModal.addEventListener('click', () => toggleModal(announcementModal, false));
     if (closeStudentModal) closeStudentModal.addEventListener('click', () => toggleModal(studentModal, false));
     if (closeTeacherModal) closeTeacherModal.addEventListener('click', () => toggleModal(teacherModal, false));
+    if (openPayrollModalBtn) openPayrollModalBtn.addEventListener('click', () => toggleModal(payrollModal, true)); // Added listener for opening payroll modal
     if (closePayrollModalBtn) closePayrollModalBtn.addEventListener('click', () => toggleModal(payrollModal, false));
+    if (openAddInvoiceModalBtn) openAddInvoiceModalBtn.addEventListener('click', () => { // Added listener for opening add invoice modal
+        if (addInvoiceForm) addInvoiceForm.reset();
+        if (addInvoiceForm) addInvoiceForm.dataset.editId = ''; // Clear edit ID
+        toggleModal(addInvoiceModal, true);
+    });
     if (closeAddInvoiceModalBtn) closeAddInvoiceModalBtn.addEventListener('click', () => toggleModal(addInvoiceModal, false));
     if (closeAttendanceModal) closeAttendanceModal.addEventListener('click', () => toggleModal(attendanceModal, false));
     if (closeTeacherAttendanceModal) closeTeacherAttendanceModal.addEventListener('click', () => toggleModal(teacherAttendanceModal, false));
@@ -411,13 +417,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (profileError && profileError.code === 'PGRST116') {
                 console.warn('No profile found for new user, creating one.');
+                // Attempt to create a basic profile if none exists
                 await supabase
                     .from('profiles')
                     .upsert({
                         id: session.user.id,
                         email: session.user.email,
                         full_name: session.user.email.split('@')[0],
-                        role: 'student',
+                        role: 'student', // Default role for new sign-ups
                         status: 'Active'
                     });
             } else if (profileError) {
@@ -653,7 +660,7 @@ async function fetchUserData(email) {
 }
 
 /**
- * Adds an entry to the audit logs table in Supabase. (From script1.js)
+ * Adds an entry to the audit logs table in Supabase.
  * @param {string} userEmail - The email of the user performing the action.
  * @param {string} action - The action performed (e.g., 'Logged In', 'Added Student').
  * @param {string} module - The module where the action occurred (e.g., 'Authentication', 'Students').
@@ -683,7 +690,7 @@ async function addAuditLog(userEmail, action, module, details) {
 }
 
 /**
- * Converts an ArrayBuffer to a Base64 string. (From script1.js)
+ * Converts an ArrayBuffer to a Base64 string.
  * Used for storing WebAuthn credentials.
  * @param {ArrayBuffer} buffer - The ArrayBuffer to convert.
  * @returns {string} The Base64 encoded string.
@@ -693,7 +700,7 @@ function arrayBufferToBase64(buffer) {
 }
 
 /**
- * Converts a Base64 string to an ArrayBuffer. (From script1.js)
+ * Converts a Base64 string to an ArrayBuffer.
  * Used for retrieving WebAuthn credentials.
  * @param {string} base64 - The Base64 string to convert.
  * @returns {ArrayBuffer} The ArrayBuffer.
@@ -769,7 +776,7 @@ async function handleForgotPassword(event) {
     const email = forgotEmailInput.value;
     try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/update-password.html',
+            redirectTo: window.location.origin + '/update-password.html', // Ensure this path is correct
         });
         if (error) throw error;
         showToast(`Password reset link sent to ${email}. Please check your email.`, 'info');
@@ -847,7 +854,7 @@ async function renderSchoolSite() {
 
     const userRole = localStorage.getItem('loggedInUserRole') || 'Admin';
     const userName = localStorage.getItem('loggedInUserName') || 'Admin';
-    loggedInUserName.textContent = userName;
+    if (loggedInUserName) loggedInUserName.textContent = userName;
     console.log(`Logged in as: ${userName} (${userRole})`);
 
     updateSidebarVisibility(userRole);
@@ -860,7 +867,6 @@ async function renderSchoolSite() {
 
 /**
  * Updates UI elements (navigation, buttons) based on the logged-in user's role.
- * Combines logic from both script.js and script1.js.
  */
 function updateSidebarVisibility(role) {
     // Hide all nav items by default
@@ -870,15 +876,15 @@ function updateSidebarVisibility(role) {
     const accessMap = {
         'admin': [
             'dashboard', 'profile', 'announcements', 'calendar', 'reports',
-            'user-management', 'students', 'teachers', 'payroll', 'finance',
-            'attendance', 'teacher-attendance', 'audit-logs', 'backup-restore'
+            'user-management', 'roles-permissions', 'system-settings', 'audit-logs', 'backup-restore',
+            'students', 'teachers', 'payroll', 'finance', 'attendance', 'teacher-attendance'
         ],
         'teacher': [
             'dashboard', 'profile', 'announcements', 'calendar', 'reports',
             'students', 'attendance'
         ],
         'student': [
-            'dashboard', 'profile', 'announcements', 'calendar', 'reports'
+            'dashboard', 'profile', 'announcements', 'calendar'
         ]
     };
 
@@ -901,48 +907,18 @@ function updateSidebarVisibility(role) {
         }
     });
 
-    // Specific buttons/forms visibility (from script1.js logic)
-    const addStudentBtn = document.getElementById('addStudentBtn');
-    if (addStudentBtn) {
-        if (role === 'admin' || role === 'teacher') {
-            addStudentBtn.classList.remove('hidden');
-        } else {
-            addStudentBtn.classList.add('hidden');
-        }
-    }
-
-    const addTeacherBtn = document.getElementById('addTeacherBtn');
-    if (addTeacherBtn) {
-        if (role === 'admin') {
-            addTeacherBtn.classList.remove('hidden');
-        } else {
-            addTeacherBtn.classList.add('hidden');
-        }
-    }
-
-    const addUserBtn = document.getElementById('addUserBtn');
-    if (addUserBtn) {
-        if (role === 'admin') {
-            addUserBtn.classList.remove('hidden');
-        } else {
-            addUserBtn.classList.add('hidden');
-        }
-    }
-
-    if (openPayrollModalBtn) {
-        if (role === 'admin') {
-            openPayrollModalBtn.classList.remove('hidden');
-        } else {
-            openPayrollModalBtn.classList.add('hidden');
-        }
-    }
-    if (openAddInvoiceModalBtn) {
-        if (role === 'admin') {
-            openAddInvoiceModalBtn.classList.remove('hidden');
-        } else {
-            openAddInvoiceModalBtn.classList.add('hidden');
-        }
-    }
+    // Specific buttons/forms visibility (based on index.html structure)
+    // These buttons are inside module content, so their visibility is handled when the module is shown.
+    // However, if they were global buttons, this is where you'd toggle their visibility.
+    // For example, if there was a global "Add Student" button:
+    // const globalAddStudentBtn = document.getElementById('globalAddStudentBtn');
+    // if (globalAddStudentBtn) {
+    //     if (role === 'admin' || role === 'teacher') {
+    //         globalAddStudentBtn.classList.remove('hidden');
+    //     } else {
+    //         globalAddStudentBtn.classList.add('hidden');
+    //     }
+    // }
 }
 
 function showModule(moduleName) {
@@ -955,41 +931,47 @@ function showModule(moduleName) {
         'calendar': ['admin', 'teacher', 'student'],
         'reports': ['admin', 'teacher'],
         'user-management': ['admin'],
-        'students': ['admin', 'teacher'], // Teachers can view/add students
+        'roles-permissions': ['admin'],
+        'system-settings': ['admin'],
+        'audit-logs': ['admin'],
+        'backup-restore': ['admin'],
+        'students': ['admin', 'teacher'],
         'teachers': ['admin'],
         'payroll': ['admin'],
         'finance': ['admin'],
         'attendance': ['admin', 'teacher'],
-        'teacher-attendance': ['admin'],
-        'audit-logs': ['admin'],
-        'backup-restore': ['admin']
+        'teacher-attendance': ['admin']
     };
 
     if (!moduleAccess[moduleName] || !moduleAccess[moduleName].includes(userRole)) {
         showToast('Access Denied: You do not have permission to view this module.', 'error');
         // Redirect to dashboard or a default accessible module
-        if (moduleName !== 'dashboard') { // Avoid infinite loop if dashboard is denied (shouldn't happen)
+        if (moduleName !== 'dashboard') {
             showModule('dashboard');
         }
         return;
     }
 
-    currentModuleTitle.textContent = moduleName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    if (currentModuleTitle) currentModuleTitle.textContent = moduleName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
     // Hide all module content and remove active states
-    modulesContainer.querySelectorAll('.module-content').forEach(content => content.classList.add('hidden'));
-    document.getElementById('dashboardMainContent').classList.add('hidden');
+    if (modulesContainer) {
+        modulesContainer.querySelectorAll('.module-content').forEach(content => content.classList.add('hidden'));
+    }
+    const dashboardMainContent = document.getElementById('dashboardMainContent');
+    if (dashboardMainContent) dashboardMainContent.classList.add('hidden');
+
     navItems.forEach(item => item.classList.remove('active'));
-    moduleTabs.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    if (moduleTabs) moduleTabs.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
 
     // Show the selected module content
     const moduleContent = document.getElementById(`${moduleName}Module`);
     if (moduleContent) {
         moduleContent.classList.remove('hidden');
-        modulesContainer.classList.remove('hidden'); // Ensure modules container is visible
+        if (modulesContainer) modulesContainer.classList.remove('hidden'); // Ensure modules container is visible
     } else if (moduleName === 'dashboard') {
-        document.getElementById('dashboardMainContent').classList.remove('hidden');
-        modulesContainer.classList.add('hidden'); // Hide modules container for dashboard
+        if (dashboardMainContent) dashboardMainContent.classList.remove('hidden');
+        if (modulesContainer) modulesContainer.classList.add('hidden'); // Hide modules container for dashboard
     } else {
         console.warn(`Module content for "${moduleName}" not found.`);
         showToast(`Module "${moduleName}" content not found.`, 'warning');
@@ -1045,10 +1027,10 @@ function showModule(moduleName) {
             renderReportsCharts();
             break;
         case 'audit-logs':
-            loadAuditLogs();
+            fetchAuditLogs(); // Renamed from loadAuditLogs for consistency with original script1.js
             break;
         case 'backup-restore':
-            loadBackupHistory();
+            fetchBackups(); // Renamed from loadBackupHistory for consistency with original script1.js
             break;
         default:
             break;
@@ -1059,26 +1041,82 @@ function showModule(moduleName) {
     if (userDropdown) userDropdown.classList.add('hidden');
 }
 
-// --- Initial Data Load (from script1.js, adapted) ---
+// --- Initial Data Load ---
 async function loadAllData() {
-    await Promise.all([
-        fetchStudents(),
-        fetchTeachers(),
-        fetchPayrollEntries(),
-        fetchInvoices(),
-        fetchAnnouncements(),
-        loadNotifications(), // Using script.js's loadNotifications
-        fetchAuditLogs(),
-        fetchBackups(), // Using script1.js's fetchBackups (simulated)
-        loadStudentAttendance(), // Using script.js's loadStudentAttendance
-        loadTeacherAttendance(), // Using script.js's loadTeacherAttendance
-        loadUsers(), // Using script.js's loadUsers (fetches profiles)
-        loadCalendarEvents() // Using script.js's loadCalendarEvents
+    // Fetch all necessary data concurrently
+    const [
+        fetchedStudents,
+        fetchedTeachers,
+        fetchedPayrollEntries,
+        fetchedInvoices,
+        fetchedAnnouncements,
+        fetchedAuditLogs,
+        fetchedSchoolEvents,
+        fetchedStudentAttendance,
+        fetchedTeacherAttendance,
+        fetchedProfiles
+    ] = await Promise.all([
+        fetchData('students'),
+        fetchData('teachers'),
+        fetchData('payroll'),
+        fetchData('invoices'),
+        fetchData('announcements'),
+        fetchData('audit_logs'),
+        fetchData('events'), // Assuming 'events' table for calendar events
+        fetchData('student_attendance'),
+        fetchData('teacher_attendance'),
+        fetchData('profiles')
     ]);
+
+    // Assign fetched data to global variables
+    students = fetchedStudents;
+    teachers = fetchedTeachers;
+    payrollEntries = fetchedPayrollEntries;
+    invoices = fetchedInvoices;
+    announcements = fetchedAnnouncements;
+    auditLogs = fetchedAuditLogs;
+    schoolEvents = fetchedSchoolEvents;
+    studentAttendanceRecords = fetchedStudentAttendance;
+    teacherAttendanceRecords = fetchedTeacherAttendance;
+    profiles = fetchedProfiles;
+
+    // Static holiday data
+    holidays = [
+        { date: '2023-01-01', name: 'New Year\'s Day' },
+        { date: '2023-01-16', name: 'Martin Luther King, Jr. Day' },
+        { date: '2023-02-20', name: 'Presidents\' Day' },
+        { date: '2023-03-17', name: 'St. Patrick\'s Day (Observed)' },
+        { date: '2023-04-07', name: 'Good Friday' },
+        { date: '2023-05-29', name: 'Memorial Day' },
+        { date: '2023-06-19', name: 'Juneteenth' },
+        { date: '2023-07-04', name: 'Independence Day' },
+        { date: '2023-09-04', name: 'Labor Day' },
+        { date: '2023-10-09', name: 'Columbus Day' },
+        { date: '2023-11-10', name: 'Veterans Day (Observed)' },
+        { date: '2023-11-23', name: 'Thanksgiving Day' },
+        { date: '2023-12-25', name: 'Christmas Day' },
+        { date: '2024-01-01', name: 'New Year\'s Day' },
+        { date: '2024-01-15', name: 'Martin Luther King, Jr. Day' },
+        { date: '2024-02-19', name: 'Presidents\' Day' },
+        { date: '2024-03-29', name: 'Good Friday' },
+        { date: '2024-05-27', name: 'Memorial Day' },
+        { date: '2024-06-19', name: 'Juneteenth' },
+        { date: '2024-07-04', name: 'Independence Day' },
+        { date: '2024-09-02', name: 'Labor Day' },
+        { date: '2024-10-14', name: 'Columbus Day' },
+        { date: '2024-11-11', name: 'Veterans Day' },
+        { date: '2024-11-28', name: 'Thanksgiving Day' },
+        { date: '2024-12-25', name: 'Christmas Day' },
+    ];
+
+    // Simulated backups
+    backups = JSON.parse(localStorage.getItem('backups')) || [
+        { id: 'B001', backup_id: 'BK20231026-001', date: '2023-10-26 02:00:00', size: '150 MB', type: 'Full' },
+        { id: 'B002', backup_id: 'BK20231025-001', date: '2023-10-25 02:00:00', size: '148 MB', type: 'Full' }
+    ];
+
     updateDashboardStats();
-    renderHolidayList();
-    renderReportsCharts();
-    renderRecentActivity(); // Ensure recent activity is rendered
+    renderRecentActivity();
 }
 
 // --- Dashboard Functions ---
@@ -1097,7 +1135,7 @@ function updateDashboardStats() {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const currentMonthRevenue = invoices.filter(inv => {
-        const invDate = new Date(inv.invoice_date); // Use invoice_date from script.js
+        const invDate = new Date(inv.invoice_date);
         return inv.status === 'Paid' && invDate.getMonth() === currentMonth && invDate.getFullYear() === currentYear;
     }).reduce((sum, inv) => sum + (inv.amount || 0), 0);
     if (monthlyRevenue) monthlyRevenue.textContent = `$${currentMonthRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -1105,9 +1143,9 @@ function updateDashboardStats() {
     if (upcomingEventsCount && calendar) {
         const today = new Date();
         today.setHours(0,0,0,0);
-        const upcoming = calendar.getEvents().filter(event => {
-            // Check if event.start is a valid date and is today or in the future
-            return event.start && new Date(event.start) >= today;
+        const upcoming = schoolEvents.filter(event => { // Use schoolEvents array
+            const eventDate = new Date(event.event_date);
+            return eventDate >= today;
         });
         upcomingEventsCount.textContent = upcoming.length.toLocaleString();
     } else if (upcomingEventsCount) {
@@ -1115,7 +1153,7 @@ function updateDashboardStats() {
     }
 }
 
-function displayRecentActivity(activities) { // From script.js, adapted
+function displayRecentActivity(activities) {
     if (!recentActivityList) return;
     recentActivityList.innerHTML = '';
     if (activities.length === 0) {
@@ -1138,9 +1176,14 @@ function displayRecentActivity(activities) { // From script.js, adapted
     });
 }
 
-function initializeDashboardCalendar() { // From script.js, adapted
+function initializeDashboardCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (calendarEl) {
+        // Destroy existing calendar instance if it exists
+        if (calendarEl.fullCalendar) { // Check if FullCalendar instance is stored
+            calendarEl.fullCalendar.destroy();
+        }
+
         const dashboardCalendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             headerToolbar: {
@@ -1158,15 +1201,16 @@ function initializeDashboardCalendar() { // From script.js, adapted
             }
         });
         dashboardCalendar.render();
+        calendarEl.fullCalendar = dashboardCalendar; // Store the instance
     }
 }
 
-// Render Recent Activity (from script1.js, adapted)
+// Render Recent Activity
 function renderRecentActivity() {
     if (!recentActivityList) return;
     recentActivityList.innerHTML = '';
-    // Use the global auditLogs array
-    const recentLogs = auditLogs.slice(0, 3); // Display last 3 activities
+    // Use the global auditLogs array, sort by timestamp descending
+    const recentLogs = [...auditLogs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 3);
 
     if (recentLogs.length === 0) {
         recentActivityList.innerHTML = '<p class="text-gray-500">No recent activity.</p>';
@@ -1226,7 +1270,7 @@ async function loadProfileData() {
     if (roleSelect) roleSelect.value = userData.role || '';
     if (phoneInput) phoneInput.value = userData.phone || '';
     if (addressTextarea) addressTextarea.value = userData.address || '';
-    if (profilePicturePreview) profilePicturePreview.src = userData.profile_picture_url || 'https://via.placeholder.com/96';
+    if (profilePicturePreview) profilePicturePreview.src = userData.profile_picture_url || 'https://via.placeholder.com/96/cccccc/ffffff?text=User';
 }
 
 async function profileFormSubmitHandler(event) {
@@ -1420,19 +1464,23 @@ async function userFormSubmitHandler(event) {
     } else {
         // Add new user via Supabase Auth and then to 'profiles' table
         try {
-            // IMPORTANT: Direct client-side creation of users with specific roles
+            // WARNING: Direct client-side creation of users with specific roles
             // or admin-level operations (like setting email_confirm: true)
             // should ideally be done via a secure backend function (e.g., Supabase Edge Function)
             // that uses the `service_role` key. Exposing the `service_role` key client-side
             // is a severe security risk. This is for demonstration purposes only.
-            const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // Replace with your actual Service Role Key in a real app
+            // In a production environment, replace this with a call to a secure backend endpoint.
+            const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // <<< REPLACE WITH YOUR ACTUAL SERVICE ROLE KEY IN A SECURE BACKEND CONTEXT
 
             if (SERVICE_ROLE_KEY === 'YOUR_SERVICE_ROLE_KEY' || !SERVICE_ROLE_KEY) {
-                showToast('Service Role Key is not configured. Cannot create user with specific role from client-side.', 'error');
+                showToast('Service Role Key is not configured. Cannot create user with specific role from client-side. This operation should be done via a secure backend.', 'error');
                 await addAuditLog(loggedInUserEmail, 'Add User Failed', 'User Management', 'Service Role Key not configured for user creation.');
                 return;
             }
 
+            // This part would typically be in a Supabase Edge Function or a Node.js backend
+            // using the Supabase Admin client with the service_role key.
+            // For demonstration, it's here, but be aware of the security implications.
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
                 email: email,
                 password: password,
@@ -1491,7 +1539,7 @@ async function deleteUser(id) {
         showToast('Access Denied: Only admin can delete users.', 'error');
         return;
     }
-    if (confirm('Are you sure you want to delete this user? This will also delete their authentication record.')) {
+    if (confirm('Are you sure you want to delete this user? This will also attempt to delete their authentication record.')) {
         const loggedInUserEmail = localStorage.getItem('loggedInUserName');
         try {
             const deletedProfile = profiles.find(p => p.id === id);
@@ -1499,15 +1547,19 @@ async function deleteUser(id) {
             // Delete from profiles table first
             const success = await deleteData('profiles', id);
             if (success) {
-                // IMPORTANT: Direct client-side deletion of auth users is not allowed for security.
+                // WARNING: Direct client-side deletion of auth users is not allowed for security.
                 // You would typically call a Supabase Edge Function or a backend API endpoint
                 // that has the necessary service_role key to perform this action.
-                const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // Replace with your actual Service Role Key in a real app
+                // In a production environment, replace this with a call to a secure backend endpoint.
+                const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // <<< REPLACE WITH YOUR ACTUAL SERVICE ROLE KEY IN A SECURE BACKEND CONTEXT
 
                 if (SERVICE_ROLE_KEY === 'YOUR_SERVICE_ROLE_KEY' || !SERVICE_ROLE_KEY) {
-                    showToast('Service Role Key is not configured. Cannot delete user from auth.users table from client-side.', 'warning');
+                    showToast('Service Role Key is not configured. Cannot delete user from auth.users table from client-side. This operation should be done via a secure backend.', 'warning');
                     await addAuditLog(loggedInUserEmail, 'Delete User Failed', 'User Management', `Auth user not deleted for ${deletedProfile?.full_name || id} due to missing service role key.`);
                 } else {
+                    // This part would typically be in a Supabase Edge Function or a Node.js backend
+                    // using the Supabase Admin client with the service_role key.
+                    // For demonstration, it's here, but be aware of the security implications.
                     const { error: authDeleteError } = await supabase.auth.admin.deleteUser(id);
                     if (authDeleteError) throw authDeleteError;
                 }
@@ -1546,11 +1598,11 @@ function displayAnnouncements() {
         row.className = 'border-b hover:bg-gray-50';
         row.innerHTML = `
             <td class="py-3 px-4">${announcement.title}</td>
-            <td class="py-3 px-4">${announcement.content.substring(0, 50)}${announcement.content.length > 50 ? '...' : ''}</td>
-            <td class="py-3 px-4">${new Date(announcement.date_posted).toLocaleDateString()}</td>
+            <td class="py-3 px-4">${announcement.content ? announcement.content.substring(0, 50) + (announcement.content.length > 50 ? '...' : '') : 'N/A'}</td>
+            <td class="py-3 px-4">${announcement.date_posted ? new Date(announcement.date_posted).toLocaleDateString() : 'N/A'}</td>
             <td class="py-3 px-4">
                 <span class="px-2 py-1 rounded-full text-xs font-medium ${announcement.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
-                    ${announcement.status}
+                    ${announcement.status || 'N/A'}
                 </span>
             </td>
             <td class="py-3 px-4">
@@ -1591,9 +1643,9 @@ function editAnnouncement(id) {
         if (announcementModalTitle) announcementModalTitle.textContent = 'Edit Announcement';
         if (announcementFormSubmitBtn) announcementFormSubmitBtn.textContent = 'Save Changes';
         if (announcementIdInput) announcementIdInput.value = announcement.id;
-        if (announcementTitleInput) announcementTitleInput.value = announcement.title;
-        if (announcementContentTextarea) announcementContentTextarea.value = announcement.content;
-        if (announcementStatusSelect) announcementStatusSelect.value = announcement.status;
+        if (announcementTitleInput) announcementTitleInput.value = announcement.title || '';
+        if (announcementContentTextarea) announcementContentTextarea.value = announcement.content || '';
+        if (announcementStatusSelect) announcementStatusSelect.value = announcement.status || 'Active';
         if (announcementModal) toggleModal(announcementModal, true);
     }
 }
@@ -1655,7 +1707,7 @@ async function deleteAnnouncement(id) {
         if (success) {
             announcements = announcements.filter(a => a.id !== id);
             displayAnnouncements();
-            await addAuditLog(loggedInUserEmail, 'Deleted Announcement', 'Announcements', `Deleted: "${deletedAnnouncement.title}" (ID: ${deletedAnnouncement.id})`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Announcement', 'Announcements', `Deleted: "${deletedAnnouncement?.title}" (ID: ${deletedAnnouncement?.id})`);
         }
     }
 }
@@ -1680,16 +1732,16 @@ function displayStudents(filteredStudents) {
         const row = studentTableBody.insertRow();
         row.className = 'border-b hover:bg-gray-50';
         row.innerHTML = `
-            <td class="py-3 px-4">${student.id}</td>
-            <td class="py-3 px-4">${student.full_name}</td>
-            <td class="py-3 px-4">${student.father_name}</td>
-            <td class="py-3 px-4">${student.mother_name}</td>
-            <td class="py-3 px-4">${student.class}</td>
-            <td class="py-3 px-4">${student.roll_no}</td>
-            <td class="py-3 px-4">${student.aadhar_no}</td>
+            <td class="py-3 px-4">${student.id || 'N/A'}</td>
+            <td class="py-3 px-4">${student.full_name || 'N/A'}</td>
+            <td class="py-3 px-4">${student.father_name || 'N/A'}</td>
+            <td class="py-3 px-4">${student.mother_name || 'N/A'}</td>
+            <td class="py-3 px-4">${student.class || 'N/A'}</td>
+            <td class="py-3 px-4">${student.roll_no || 'N/A'}</td>
+            <td class="py-3 px-4">${student.aadhar_no || 'N/A'}</td>
             <td class="py-3 px-4">
                 <span class="px-2 py-1 rounded-full text-xs font-medium ${student.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                    ${student.status}
+                    ${student.status || 'N/A'}
                 </span>
             </td>
             <td class="py-3 px-4">
@@ -1730,15 +1782,15 @@ function editStudent(id) {
         if (studentModalTitle) studentModalTitle.textContent = 'Edit Student';
         if (studentFormSubmitBtn) studentFormSubmitBtn.textContent = 'Save Changes';
         if (studentIdInput) studentIdInput.value = student.id;
-        if (studentFullNameInput) studentFullNameInput.value = student.full_name;
-        if (studentFatherNameInput) studentFatherNameInput.value = student.father_name;
-        if (studentMotherNameInput) studentMotherNameInput.value = student.mother_name;
-        if (studentClassSelect) studentClassSelect.value = student.class;
-        if (studentRollNoInput) studentRollNoInput.value = student.roll_no;
-        if (studentAadharNoInput) studentAadharNoInput.value = student.aadhar_no;
+        if (studentFullNameInput) studentFullNameInput.value = student.full_name || '';
+        if (studentFatherNameInput) studentFatherNameInput.value = student.father_name || '';
+        if (studentMotherNameInput) studentMotherNameInput.value = student.mother_name || '';
+        if (studentClassSelect) studentClassSelect.value = student.class || '';
+        if (studentRollNoInput) studentRollNoInput.value = student.roll_no || '';
+        if (studentAadharNoInput) studentAadharNoInput.value = student.aadhar_no || '';
         if (studentEmailInput) studentEmailInput.value = student.email || '';
         if (studentPhoneInput) studentPhoneInput.value = student.phone || '';
-        if (studentStatusSelect) studentStatusSelect.value = student.status;
+        if (studentStatusSelect) studentStatusSelect.value = student.status || 'Active';
         if (studentModal) toggleModal(studentModal, true);
     }
 }
@@ -1805,7 +1857,7 @@ async function deleteStudent(id) {
         if (success) {
             students = students.filter(s => s.id !== id);
             displayStudents(students);
-            await addAuditLog(loggedInUserEmail, 'Deleted Student', 'Students', `Deleted student: ${deletedStudent.full_name} (ID: ${deletedStudent.id})`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Student', 'Students', `Deleted student: ${deletedStudent?.full_name} (ID: ${deletedStudent?.id})`);
         }
     }
 }
@@ -1815,7 +1867,7 @@ function filterStudents() {
     const classFilter = searchClassSelect.value;
 
     const filtered = students.filter(student => {
-        const matchesRoll = student.roll_no.toLowerCase().includes(rollNoFilter);
+        const matchesRoll = (student.roll_no || '').toLowerCase().includes(rollNoFilter);
         const matchesClass = classFilter === '' || student.class === classFilter;
         return matchesRoll && matchesClass;
     });
@@ -1842,10 +1894,10 @@ function displayTeachers(filteredTeachers) {
         const row = teacherTableBody.insertRow();
         row.className = 'border-b hover:bg-gray-50';
         row.innerHTML = `
-            <td class="py-3 px-4">${teacher.id}</td>
-            <td class="py-3 px-4">${teacher.full_name}</td>
-            <td class="py-3 px-4">${teacher.subject}</td>
-            <td class="py-3 px-4">${teacher.classes}</td>
+            <td class="py-3 px-4">${teacher.id || 'N/A'}</td>
+            <td class="py-3 px-4">${teacher.full_name || 'N/A'}</td>
+            <td class="py-3 px-4">${teacher.subject || 'N/A'}</td>
+            <td class="py-3 px-4">${teacher.classes || 'N/A'}</td>
             <td class="py-3 px-4">
                 ${currentUserRole === 'admin' ? `
                 <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit Teacher" onclick="editTeacher('${teacher.id}')">
@@ -1884,10 +1936,10 @@ function editTeacher(id) {
         if (teacherModalTitle) teacherModalTitle.textContent = 'Edit Teacher';
         if (teacherFormSubmitBtn) teacherFormSubmitBtn.textContent = 'Save Changes';
         if (teacherIdInput) teacherIdInput.value = teacher.id;
-        if (teacherFullNameInput) teacherFullNameInput.value = teacher.full_name;
-        if (teacherSubjectSelect) teacherSubjectSelect.value = teacher.subject;
-        if (teacherEmailInput) teacherEmailInput.value = teacher.email;
-        if (teacherClassesInput) teacherClassesInput.value = teacher.classes;
+        if (teacherFullNameInput) teacherFullNameInput.value = teacher.full_name || '';
+        if (teacherSubjectSelect) teacherSubjectSelect.value = teacher.subject || '';
+        if (teacherEmailInput) teacherEmailInput.value = teacher.email || '';
+        if (teacherClassesInput) teacherClassesInput.value = teacher.classes || '';
         if (teacherModal) toggleModal(teacherModal, true);
     }
 }
@@ -1949,7 +2001,7 @@ async function deleteTeacher(id) {
         if (success) {
             teachers = teachers.filter(t => t.id !== id);
             displayTeachers(teachers);
-            await addAuditLog(loggedInUserEmail, 'Deleted Teacher', 'Teachers', `Deleted teacher: ${deletedTeacher.full_name} (ID: ${deletedTeacher.id})`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Teacher', 'Teachers', `Deleted teacher: ${deletedTeacher?.full_name} (ID: ${deletedTeacher?.id})`);
         }
     }
 }
@@ -1979,13 +2031,14 @@ function displayPayrollEntries() {
             case 'Processed': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
             case 'Processing': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
             case 'Pending': statusBgClass = 'bg-blue-100'; statusTextColorClass = 'text-blue-800'; break;
+            default: statusBgClass = 'bg-gray-100'; statusTextColorClass = 'text-gray-800'; break;
         }
         row.innerHTML = `
-            <td class="py-3 px-4">${entry.period}</td>
-            <td class="py-3 px-4">${entry.staff_count}</td>
-            <td class="py-3 px-4">$${parseFloat(entry.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td class="py-3 px-4">${entry.period || 'N/A'}</td>
+            <td class="py-3 px-4">${entry.staff_count || 0}</td>
+            <td class="py-3 px-4">$${parseFloat(entry.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="py-3 px-4">
-                <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${entry.status}</span>
+                <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${entry.status || 'N/A'}</span>
             </td>
             <td class="py-3 px-4">
                 ${currentUserRole === 'admin' ? `
@@ -2051,7 +2104,7 @@ async function deletePayrollEntry(id) {
         if (success) {
             payrollEntries = payrollEntries.filter(e => e.id !== id);
             displayPayrollEntries();
-            await addAuditLog(loggedInUserEmail, 'Deleted Payroll Entry', 'Payroll', `Deleted payroll entry for period: ${deletedEntry.period}`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Payroll Entry', 'Payroll', `Deleted payroll entry for period: ${deletedEntry?.period}`);
         }
     }
 }
@@ -2081,14 +2134,15 @@ function displayInvoices() {
             case 'Paid': statusBgClass = 'bg-green-100'; statusTextColorClass = 'text-green-800'; break;
             case 'Pending': statusBgClass = 'bg-yellow-100'; statusTextColorClass = 'text-yellow-800'; break;
             case 'Overdue': statusBgClass = 'bg-red-100'; statusTextColorClass = 'text-red-800'; break;
+            default: statusBgClass = 'bg-gray-100'; statusTextColorClass = 'text-gray-800'; break;
         }
         row.innerHTML = `
-            <td class="py-3 px-4">${invoice.invoice_number}</td>
-            <td class="py-3 px-4">${new Date(invoice.invoice_date).toLocaleDateString()}</td>
-            <td class="py-3 px-4">$${invoice.amount.toFixed(2)}</td>
+            <td class="py-3 px-4">${invoice.invoice_number || 'N/A'}</td>
+            <td class="py-3 px-4">${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : 'N/A'}</td>
+            <td class="py-3 px-4">$${(invoice.amount || 0).toFixed(2)}</td>
             <td class="py-3 px-4">
                 <span class="px-2 py-1 rounded-full text-xs font-medium ${statusBgClass} ${statusTextColorClass}">
-                    ${invoice.status}
+                    ${invoice.status || 'N/A'}
                 </span>
             </td>
             <td class="py-3 px-4">
@@ -2157,10 +2211,10 @@ function editInvoice(id) {
     }
     const invoice = invoices.find(i => i.id === id);
     if (invoice) {
-        if (invoiceNumberInput) invoiceNumberInput.value = invoice.invoice_number;
-        if (invoiceDateInput) invoiceDateInput.value = invoice.invoice_date;
-        if (invoiceAmountInput) invoiceAmountInput.value = invoice.amount;
-        if (invoiceStatusSelect) invoiceStatusSelect.value = invoice.status;
+        if (invoiceNumberInput) invoiceNumberInput.value = invoice.invoice_number || '';
+        if (invoiceDateInput) invoiceDateInput.value = invoice.invoice_date || '';
+        if (invoiceAmountInput) invoiceAmountInput.value = invoice.amount || 0;
+        if (invoiceStatusSelect) invoiceStatusSelect.value = invoice.status || 'Pending';
         if (addInvoiceForm) addInvoiceForm.dataset.editId = invoice.id;
         if (addInvoiceModal) toggleModal(addInvoiceModal, true);
     }
@@ -2179,7 +2233,7 @@ async function deleteInvoice(id) {
         if (success) {
             invoices = invoices.filter(i => i.id !== id);
             displayInvoices();
-            await addAuditLog(loggedInUserEmail, 'Deleted Invoice', 'Finance', `Deleted invoice: ${deletedInvoice.invoice_number}`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Invoice', 'Finance', `Deleted invoice: ${deletedInvoice?.invoice_number}`);
         }
     }
 }
@@ -2213,10 +2267,10 @@ function displayStudentAttendance(filteredRecords) {
             <td class="py-3 px-4">${studentName}</td>
             <td class="py-3 px-4">${studentRollNo}</td>
             <td class="py-3 px-4">${studentClass}</td>
-            <td class="py-3 px-4">${new Date(record.attendance_date).toLocaleDateString()}</td>
+            <td class="py-3 px-4">${record.attendance_date ? new Date(record.attendance_date).toLocaleDateString() : 'N/A'}</td>
             <td class="py-3 px-4">
                 <span class="px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-green-100 text-green-800' : record.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
-                    ${record.status}
+                    ${record.status || 'N/A'}
                 </span>
             </td>
             <td class="py-3 px-4">${record.remarks || 'N/A'}</td>
@@ -2248,7 +2302,7 @@ function populateStudentAttendanceDropdown() {
     students.forEach(student => {
         const option = document.createElement('option');
         option.value = student.id;
-        option.textContent = `${student.full_name} (Roll No: ${student.roll_no})`;
+        option.textContent = `${student.full_name || 'Unknown'} (Roll No: ${student.roll_no || 'N/A'})`;
         attendanceStudentSelect.appendChild(option);
     });
 }
@@ -2278,9 +2332,9 @@ function editStudentAttendance(id) {
         if (attendanceModalTitle) attendanceModalTitle.textContent = 'Edit Attendance';
         if (attendanceFormSubmitBtn) attendanceFormSubmitBtn.textContent = 'Save Changes';
         if (attendanceIdInput) attendanceIdInput.value = record.id;
-        if (attendanceStudentSelect) attendanceStudentSelect.value = record.student_id;
-        if (attendanceDateInput) attendanceDateInput.value = record.attendance_date;
-        if (attendanceStatusSelect) attendanceStatusSelect.value = record.status;
+        if (attendanceStudentSelect) attendanceStudentSelect.value = record.student_id || '';
+        if (attendanceDateInput) attendanceDateInput.value = record.attendance_date || '';
+        if (attendanceStatusSelect) attendanceStatusSelect.value = record.status || 'Present';
         if (attendanceRemarksTextarea) attendanceRemarksTextarea.value = record.remarks || '';
         if (attendanceModal) toggleModal(attendanceModal, true);
     }
@@ -2346,7 +2400,7 @@ async function deleteStudentAttendance(id) {
             studentAttendanceRecords = studentAttendanceRecords.filter(r => r.id !== id);
             displayStudentAttendance(studentAttendanceRecords);
             updateStudentAttendanceSummary(studentAttendanceRecords);
-            await addAuditLog(loggedInUserEmail, 'Deleted Attendance', 'Attendance', `Deleted attendance record for ${deletedRecord.student_id} on ${deletedRecord.attendance_date}`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Attendance', 'Attendance', `Deleted attendance record for ${deletedRecord?.student_id} on ${deletedRecord?.attendance_date}`);
         }
     }
 }
@@ -2398,10 +2452,10 @@ function displayTeacherAttendance(filteredRecords) {
         row.innerHTML = `
             <td class="py-3 px-4">${teacherName}</td>
             <td class="py-3 px-4">${teacherSubject}</td>
-            <td class="py-3 px-4">${new Date(record.attendance_date).toLocaleDateString()}</td>
+            <td class="py-3 px-4">${record.attendance_date ? new Date(record.attendance_date).toLocaleDateString() : 'N/A'}</td>
             <td class="py-3 px-4">
                 <span class="px-2 py-1 rounded-full text-xs font-medium ${record.status === 'Present' ? 'bg-green-100 text-green-800' : record.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
-                    ${record.status}
+                    ${record.status || 'N/A'}
                 </span>
             </td>
             <td class="py-3 px-4">${record.remarks || 'N/A'}</td>
@@ -2433,7 +2487,7 @@ function populateTeacherAttendanceDropdown() {
     teachers.forEach(teacher => {
         const option = document.createElement('option');
         option.value = teacher.id;
-        option.textContent = `${teacher.full_name} (${teacher.subject})`;
+        option.textContent = `${teacher.full_name || 'Unknown'} (${teacher.subject || 'N/A'})`;
         teacherAttendanceTeacherSelect.appendChild(option);
     });
 }
@@ -2463,9 +2517,9 @@ function editTeacherAttendance(id) {
         if (teacherAttendanceModalTitle) teacherAttendanceModalTitle.textContent = 'Edit Attendance';
         if (teacherAttendanceFormSubmitBtn) teacherAttendanceFormSubmitBtn.textContent = 'Save Changes';
         if (teacherAttendanceIdInput) teacherAttendanceIdInput.value = record.id;
-        if (teacherAttendanceTeacherSelect) teacherAttendanceTeacherSelect.value = record.teacher_id;
-        if (teacherAttendanceDateInput) teacherAttendanceDateInput.value = record.attendance_date;
-        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = record.status;
+        if (teacherAttendanceTeacherSelect) teacherAttendanceTeacherSelect.value = record.teacher_id || '';
+        if (teacherAttendanceDateInput) teacherAttendanceDateInput.value = record.attendance_date || '';
+        if (teacherAttendanceStatusSelect) teacherAttendanceStatusSelect.value = record.status || 'Present';
         if (teacherAttendanceRemarksTextarea) teacherAttendanceRemarksTextarea.value = record.remarks || '';
         if (teacherAttendanceModal) toggleModal(teacherAttendanceModal, true);
     }
@@ -2531,7 +2585,7 @@ async function deleteTeacherAttendance(id) {
             teacherAttendanceRecords = teacherAttendanceRecords.filter(r => r.id !== id);
             displayTeacherAttendance(teacherAttendanceRecords);
             updateTeacherAttendanceSummary(teacherAttendanceRecords);
-            await addAuditLog(loggedInUserEmail, 'Deleted Teacher Attendance', 'Teacher Attendance', `Deleted attendance record for ${deletedRecord.teacher_id} on ${deletedRecord.attendance_date}`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Teacher Attendance', 'Teacher Attendance', `Deleted attendance record for ${deletedRecord?.teacher_id} on ${deletedRecord?.attendance_date}`);
         }
     }
 }
@@ -2558,41 +2612,12 @@ function filterTeacherAttendance() {
 
 // --- Calendar Module Functions ---
 
-// Holiday Data (from script1.js)
-holidays = [
-    { date: '2023-01-01', name: 'New Year\'s Day' },
-    { date: '2023-01-16', name: 'Martin Luther King, Jr. Day' },
-    { date: '2023-02-20', name: 'Presidents\' Day' },
-    { date: '2023-03-17', name: 'St. Patrick\'s Day (Observed)' },
-    { date: '2023-04-07', name: 'Good Friday' },
-    { date: '2023-05-29', name: 'Memorial Day' },
-    { date: '2023-06-19', name: 'Juneteenth' },
-    { date: '2023-07-04', name: 'Independence Day' },
-    { date: '2023-09-04', name: 'Labor Day' },
-    { date: '2023-10-09', name: 'Columbus Day' },
-    { date: '2023-11-10', name: 'Veterans Day (Observed)' },
-    { date: '2023-11-23', name: 'Thanksgiving Day' },
-    { date: '2023-12-25', name: 'Christmas Day' },
-    { date: '2024-01-01', name: 'New Year\'s Day' },
-    { date: '2024-01-15', name: 'Martin Luther King, Jr. Day' },
-    { date: '2024-02-19', name: 'Presidents\' Day' },
-    { date: '2024-03-29', name: 'Good Friday' },
-    { date: '2024-05-27', name: 'Memorial Day' },
-    { date: '2024-06-19', name: 'Juneteenth' },
-    { date: '2024-07-04', name: 'Independence Day' },
-    { date: '2024-09-02', name: 'Labor Day' },
-    { date: '2024-10-14', name: 'Columbus Day' },
-    { date: '2024-11-11', name: 'Veterans Day' },
-    { date: '2024-11-28', name: 'Thanksgiving Day' },
-    { date: '2024-12-25', name: 'Christmas Day' },
-];
-
 function initializeFullCalendar() {
     if (!fullCalendarEl) return;
 
     // Destroy existing calendar instance if it exists
-    if (calendar) {
-        calendar.destroy();
+    if (fullCalendarEl.fullCalendar) {
+        fullCalendarEl.fullCalendar.destroy();
     }
 
     calendar = new FullCalendar.Calendar(fullCalendarEl, {
@@ -2679,13 +2704,13 @@ function initializeFullCalendar() {
         }
     });
     calendar.render();
-    fullCalendarEl.calendar = calendar; // Store calendar instance on the element
+    fullCalendarEl.fullCalendar = calendar; // Store calendar instance on the element
 }
 
 async function loadCalendarEvents() {
     schoolEvents = await fetchData('events');
-    if (fullCalendarEl && fullCalendarEl.calendar) {
-        fullCalendarEl.calendar.setOption('events', schoolEvents.map(event => ({
+    if (fullCalendarEl && fullCalendarEl.fullCalendar) {
+        fullCalendarEl.fullCalendar.setOption('events', schoolEvents.map(event => ({
             id: event.id,
             title: event.title,
             start: event.event_date,
@@ -2701,8 +2726,8 @@ async function addCalendarEvent(event) {
     const addedEvent = await insertData('events', event);
     if (addedEvent) {
         schoolEvents.push(addedEvent);
-        if (fullCalendarEl && fullCalendarEl.calendar) {
-            fullCalendarEl.calendar.addEvent({
+        if (fullCalendarEl && fullCalendarEl.fullCalendar) {
+            fullCalendarEl.fullCalendar.addEvent({
                 id: addedEvent.id,
                 title: addedEvent.title,
                 start: addedEvent.event_date,
@@ -2731,11 +2756,11 @@ async function deleteCalendarEvent(id) {
         const success = await deleteData('events', id);
         if (success) {
             schoolEvents = schoolEvents.filter(e => e.id !== id);
-            if (fullCalendarEl && fullCalendarEl.calendar) {
-                const eventToRemove = fullCalendarEl.calendar.getEventById(id);
+            if (fullCalendarEl && fullCalendarEl.fullCalendar) {
+                const eventToRemove = fullCalendarEl.fullCalendar.getEventById(id);
                 if (eventToRemove) eventToRemove.remove();
             }
-            await addAuditLog(loggedInUserEmail, 'Deleted Calendar Event', 'Calendar', `Deleted event: "${deletedEvent.title}"`);
+            await addAuditLog(loggedInUserEmail, 'Deleted Calendar Event', 'Calendar', `Deleted event: "${deletedEvent?.title}"`);
         }
     }
 }
@@ -2856,11 +2881,11 @@ function displayAuditLogs(logs) {
         const row = auditLogTableBody.insertRow();
         row.className = 'border-b hover:bg-gray-50';
         row.innerHTML = `
-            <td class="py-3 px-4">${new Date(log.timestamp).toLocaleString()}</td>
-            <td class="py-3 px-4">${log.user_email}</td>
-            <td class="py-3 px-4">${log.action}</td>
-            <td class="py-3 px-4">${log.module}</td>
-            <td class="py-3 px-4">${log.details}</td>
+            <td class="py-3 px-4">${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+            <td class="py-3 px-4">${log.user_email || 'N/A'}</td>
+            <td class="py-3 px-4">${log.action || 'N/A'}</td>
+            <td class="py-3 px-4">${log.module || 'N/A'}</td>
+            <td class="py-3 px-4">${log.details || 'N/A'}</td>
         `;
     });
 }
@@ -2868,7 +2893,7 @@ function displayAuditLogs(logs) {
 // --- Backup & Restore Module Functions ---
 
 async function fetchBackups() {
-    // Backups are simulated in script1.js, keeping that for now
+    // Backups are simulated, keeping that for now
     backups = JSON.parse(localStorage.getItem('backups')) || [
         { id: 'B001', backup_id: 'BK20231026-001', date: '2023-10-26 02:00:00', size: '150 MB', type: 'Full' },
         { id: 'B002', backup_id: 'BK20231025-001', date: '2023-10-25 02:00:00', size: '148 MB', type: 'Full' }
@@ -2890,10 +2915,10 @@ function displayBackupHistory(backups) {
         const row = backupTableBody.insertRow();
         row.className = 'border-b hover:bg-gray-50';
         row.innerHTML = `
-            <td class="py-3 px-4">${backup.backup_id}</td>
-            <td class="py-3 px-4">${new Date(backup.date).toLocaleString()}</td>
-            <td class="py-3 px-4">${backup.size}</td>
-            <td class="py-3 px-4">${backup.type}</td>
+            <td class="py-3 px-4">${backup.backup_id || 'N/A'}</td>
+            <td class="py-3 px-4">${backup.date ? new Date(backup.date).toLocaleString() : 'N/A'}</td>
+            <td class="py-3 px-4">${backup.size || 'N/A'}</td>
+            <td class="py-3 px-4">${backup.type || 'N/A'}</td>
             <td class="py-3 px-4">
                 ${currentUserRole === 'admin' ? `
                 <button class="text-green-600 hover:text-green-800 mr-3" title="Download Backup" onclick="downloadBackup('${backup.id}')">
@@ -2974,8 +2999,8 @@ function updateNotificationUI() {
             const notificationItem = document.createElement('div');
             notificationItem.className = 'notification-item';
             notificationItem.innerHTML = `
-                <p>${n.message}</p>
-                <span class="timestamp">${new Date(n.created_at).toLocaleString()}</span>
+                <p>${n.message || 'N/A'}</p>
+                <span class="timestamp">${n.created_at ? new Date(n.created_at).toLocaleString() : 'N/A'}</span>
             `;
             notificationItem.addEventListener('click', () => markNotificationAsRead(n.id));
             notificationList.appendChild(notificationItem);
@@ -3032,12 +3057,12 @@ function showAllNotifications() {
             const notificationItem = document.createElement('div');
             notificationItem.className = `notification-item p-3 border-b border-gray-200 ${n.is_read ? 'bg-gray-50' : 'bg-blue-50 font-semibold'}`;
             notificationItem.innerHTML = `
-                <p>${n.message}</p>
-                <span class="text-xs text-gray-500">${new Date(n.created_at).toLocaleString()}</span>
+                <p>${n.message || 'N/A'}</p>
+                <span class="text-xs text-gray-500">${n.created_at ? new Date(n.created_at).toLocaleString() : 'N/A'}</span>
             `;
             notificationItem.addEventListener('click', () => {
                 markNotificationAsRead(n.id);
-                showAllNotifications();
+                showAllNotifications(); // Re-render to update read status
             });
             viewAllNotificationList.appendChild(notificationItem);
         });
@@ -3144,7 +3169,7 @@ function processVoiceCommand(command) {
     }
 }
 
-// --- WebAuthn Integration (from script1.js, adapted) ---
+// --- WebAuthn Integration ---
 
 // Student Fingerprint Registration
 if (registerStudentFingerprintBtn) {
@@ -3405,7 +3430,7 @@ if (verifyTeacherFingerprintBtn) {
     });
 }
 
-// --- Export to Excel Functionality (from script1.js) ---
+// --- Export to Excel Functionality ---
 function exportToExcel(data, filename) {
     if (typeof XLSX === 'undefined') {
         showToast('Excel export library (SheetJS) not loaded. Please ensure it is included in your HTML.', 'error');
@@ -3421,8 +3446,8 @@ function exportToExcel(data, filename) {
 // Export Students to Excel
 window.exportStudentsToExcel = function() {
     const currentUserRole = localStorage.getItem('loggedInUserRole');
-    if (currentUserRole !== 'admin') {
-        showToast('Access Denied: Only admin can export student data.', 'error');
+    if (currentUserRole !== 'admin' && currentUserRole !== 'teacher') {
+        showToast('Access Denied: Only admin and teachers can export student data.', 'error');
         return;
     }
     const studentData = students.map(student => ({
@@ -3547,7 +3572,7 @@ window.exportStudentAttendanceToExcel = function() {
             Student_Name: student ? student.full_name : 'Unknown',
             Roll_No: student ? student.roll_no : 'N/A',
             Class: student ? student.class : 'N/A',
-            Date: new Date(record.attendance_date).toLocaleDateString(),
+            Date: record.attendance_date ? new Date(record.attendance_date).toLocaleDateString() : 'N/A',
             Status: record.status,
             Remarks: record.remarks
         };
@@ -3569,7 +3594,7 @@ window.exportTeacherAttendanceToExcel = function() {
         return {
             Teacher_Name: teacher ? teacher.full_name : 'Unknown',
             Subject: teacher ? teacher.subject : 'N/A',
-            Date: new Date(record.attendance_date).toLocaleDateString(),
+            Date: record.attendance_date ? new Date(record.attendance_date).toLocaleDateString() : 'N/A',
             Status: record.status,
             Remarks: record.remarks
         };
