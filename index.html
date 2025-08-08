@@ -173,12 +173,12 @@
             <header class="bg-white shadow-sm flex justify-between items-center relative animate-slideInFromTop">
                 <h2 id="currentModuleTitle">Dashboard</h2>
                 <div class="flex items-center space-x-4">
-                    <button class="p-2 rounded-full hover:bg-gray-100 relative" id="notificationButton" type="button">
+                    <button class="p-2 rounded-full hover:bg-gray-100 relative" id="notificationButton" type="button" aria-label="Show notifications">
                         <i class="fas fa-bell text-gray-600"></i>
                         <span class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full" id="notificationCount">3</span>
                     </button>
                     <!-- NEW: Dark Mode Toggle -->
-                    <button class="p-2 rounded-full hover:bg-gray-100" id="darkModeToggle" type="button">
+                    <button class="p-2 rounded-full hover:bg-gray-100" id="darkModeToggle" type="button" aria-label="Toggle dark mode">
                         <i class="fas fa-moon text-gray-600"></i> <!-- Moon icon for light mode -->
                     </button>
                     <!-- Notification Dropdown UI -->
@@ -196,12 +196,13 @@
                         </div>
                     </div>
                     <!-- End Notification Dropdown UI -->
-                    <div class="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100" id="userProfileToggle">
+                    <div class="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100" id="userProfileToggle" onclick="toggleUserDropdown()">
+                        <span id="loggedInUserName" class="font-medium text-gray-700">Admin</span>
                         <i class="fas fa-chevron-down text-xs text-gray-500"></i>
                     </div>
                     <!-- User Dropdown UI -->
                     <div class="user-dropdown hidden" id="userDropdown">
-                        <div class="user-dropdown-item" id="logoutButton">
+                        <div class="user-dropdown-item" id="logoutButton" onclick="logout()">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Logout</span>
                         </div>
@@ -276,6 +277,29 @@
                             </div>
                             <div class="icon-wrapper bg-teal-50 text-teal-600">
                                 <i class="fas fa-user-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Added for monthly revenue and upcoming events -->
+                    <div class="module-card p-6 animate-popIn" style="animation-delay: 0.95s;">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-500">Monthly Revenue</p>
+                                <h3 class="text-2xl font-bold mt-1" id="monthlyRevenue">₹0.00</h3>
+                            </div>
+                            <div class="icon-wrapper bg-purple-50 text-purple-600">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="module-card p-6 animate-popIn" style="animation-delay: 1.0s;">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-500">Upcoming Events</p>
+                                <h3 class="text-2xl font-bold mt-1" id="upcomingEventsCount">0</h3>
+                            </div>
+                            <div class="icon-wrapper bg-orange-50 text-orange-600">
+                                <i class="fas fa-calendar-day"></i>
                             </div>
                         </div>
                     </div>
@@ -449,24 +473,26 @@
                         </div>
                         <!-- Backup & Restore -->
                         <div class="module-card p-4 animate-popIn" style="animation-delay: 2.5s;">
-                            <div class="icon-wrapper bg-purple-50 text-purple-600">
-                                <i class="fas fa-database"></i>
+                            <div class="flex items-center space-x-4 mb-3">
+                                <div class="icon-wrapper bg-purple-50 text-purple-600">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <h4 class="font-medium">Backup &amp; Restore</h4>
                             </div>
-                            <h4 class="font-medium">Backup &amp; Restore</h4>
+                            <p class="text-gray-500 text-sm mb-3">Manage database backups and restoration</p>
+                            <button class="text-blue-600 text-sm font-medium open-module" data-module="backup-restore" type="button">Open Module</button>
                         </div>
-                        <p class="text-gray-500 text-sm mb-3">Manage database backups and restoration</p>
-                        <button class="text-blue-600 text-sm font-medium open-module" data-module="backup-restore" type="button">Open Module</button>
-                    </div>
-                    <!-- Announcements -->
-                    <div class="module-card p-4 animate-popIn" style="animation-delay: 2.6s;">
-                        <div class="flex items-center space-x-4 mb-3">
-                            <div class="icon-wrapper bg-pink-50 text-pink-600">
-                                <i class="fas fa-bullhorn"></i>
+                        <!-- Announcements -->
+                        <div class="module-card p-4 animate-popIn" style="animation-delay: 2.6s;">
+                            <div class="flex items-center space-x-4 mb-3">
+                                <div class="icon-wrapper bg-pink-50 text-pink-600">
+                                    <i class="fas fa-bullhorn"></i>
+                                </div>
+                                <h4 class="font-medium">Announcements</h4>
                             </div>
-                            <h4 class="font-medium">Announcements</h4>
+                            <p class="text-gray-500 text-sm mb-3">Create and manage school-wide announcements</p>
+                            <button class="text-blue-600 text-sm font-medium open-module" data-module="announcements" type="button">Open Module</button>
                         </div>
-                        <p class="text-gray-500 text-sm mb-3">Create and manage school-wide announcements</p>
-                        <button class="text-blue-600 text-sm font-medium open-module" data-module="announcements" type="button">Open Module</button>
                     </div>
                 </div>
                 <!-- Recent Activity and Calendar -->
@@ -746,18 +772,18 @@
                             <input class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto" id="searchRoll" placeholder="Search by Roll No." type="text" name="searchRoll"/>
                             <select class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto" id="searchClass" name="searchClass">
                                 <option value="">All Classes</option>
-                                <option>Grade 1</option>
-                                <option>Grade 2</option>
-                                <option>Grade 3</option>
-                                <option>Grade 4</option>
-                                <option>Grade 5</option>
-                                <option>Grade 6</option>
-                                <option>Grade 7</option>
-                                <option>Grade 8</option>
-                                <option>Grade 9</option>
-                                <option>Grade 10</option>
-                                <option>Grade 11</option>
-                                <option>Grade 12</option>
+                                <option value="1">Grade 1</option>
+                                <option value="2">Grade 2</option>
+                                <option value="3">Grade 3</option>
+                                <option value="4">Grade 4</option>
+                                <option value="5">Grade 5</option>
+                                <option value="6">Grade 6</option>
+                                <option value="7">Grade 7</option>
+                                <option value="8">Grade 8</option>
+                                <option value="9">Grade 9</option>
+                                <option value="10">Grade 10</option>
+                                <option value="11">Grade 11</option>
+                                <option value="12">Grade 12</option>
                             </select>
                             <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 w-full md:w-auto" id="applyStudentSearch" type="button">
                                 <i class="fas fa-search mr-2"></i>Search
@@ -837,7 +863,23 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    
+<!-- In index.html, within the teacherDetailsModal div -->
+<div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="teacherDetailsModal" aria-labelledby="teacherDetailsModalTitle" aria-modal="true" role="dialog" tabindex="-1">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold" id="teacherDetailsModalTitle">Teacher Details</h3>
+            <button class="text-gray-500 hover:text-gray-700" id="closeTeacherDetailsModal" type="button" aria-label="Close teacher details modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="space-y-4" id="teacherDetailsContent">
+            <!-- Teacher details will be dynamically loaded here -->
+        </div>
+    </div>
+</div>
+
+</div>
                 </div>
                 <!-- Payroll Module -->
                 <div class="module-content p-6 hidden" id="payrollModule">
@@ -1082,7 +1124,7 @@
                                     <th class="text-left py-3 px-4">Actions</th>
                                 </tr>
                                 </thead>
-                                <tbody id="teacherTableBody">
+                                <tbody id="teacherAttendanceTableBody">
                                 <!-- Teacher attendance records will be dynamically loaded here -->
                                 </tbody>
                             </table>
@@ -1100,6 +1142,10 @@
                         <div class="space-y-2" id="holidayList">
                             <!-- Holidays will be dynamically loaded here -->
                         </div>
+                        <!-- NEW: Add Holiday Button -->
+                        <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onclick="showAddHolidayModal()">
+                            <i class="fas fa-plus mr-2"></i>Add Holiday
+                        </button>
                     </div>
                 </div>
                 <!-- Reports Module -->
@@ -1614,18 +1660,18 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="studentClass">Class</label>
                             <select class="w-full p-2 border rounded-lg" id="studentClass" name="studentClass" required="">
                                 <option value="">Select Class</option>
-                                <option>Grade 1</option>
-                                <option>Grade 2</option>
-                                <option>Grade 3</option>
-                                <option>Grade 4</option>
-                                <option>Grade 5</option>
-                                <option>Grade 6</option>
-                                <option>Grade 7</option>
-                                <option>Grade 8</option>
-                                <option>Grade 9</option>
-                                <option>Grade 10</option>
-                                <option>Grade 11</option>
-                                <option>Grade 12</option>
+                                <option value="1">Grade 1</option>
+                                <option value="2">Grade 2</option>
+                                <option value="3">Grade 3</option>
+                                <option value="4">Grade 4</option>
+                                <option value="5">Grade 5</option>
+                                <option value="6">Grade 6</option>
+                                <option value="7">Grade 7</option>
+                                <option value="8">Grade 8</option>
+                                <option value="9">Grade 9</option>
+                                <option value="10">Grade 10</option>
+                                <option value="11">Grade 11</option>
+                                <option value="12">Grade 12</option>
                             </select>
                         </div>
                         <div>
@@ -1807,7 +1853,7 @@
                 </div>
             </div>
             <!-- Add/Edit Teacher Attendance Modal -->
-            <div class="hidden fixed inset-0 bg-black bg-opacity50 flex items-center justify-center z-50" id="teacherAttendanceModal" aria-labelledby="teacherAttendanceModalTitle" aria-modal="true" role="dialog" tabindex="-1">
+            <div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="teacherAttendanceModal" aria-labelledby="teacherAttendanceModalTitle" aria-modal="true" role="dialog" tabindex="-1">
                 <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-semibold" id="teacherAttendanceModalTitle">Mark Teacher Attendance</h3>
@@ -1905,7 +1951,7 @@
                     </form>
                 </div>
             </div>
-            <!-- Calendar Module -->
+            <!-- Calendar Module (Duplicate, removed the first one and kept this one) -->
             <div class="module-content p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 hidden" id="calendarModule">
                 <div class="lg:col-span-2 module-card p-6">
                     <h3 class="text-2xl font-semibold mb-4 text-gray-800">School Event Calendar</h3>
@@ -2088,5 +2134,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <script src="script.js"></script>
+    <!-- Placeholder for chart-related JavaScript fixes.
+         Actual chart initialization and updates would be in script.js.
+         For example, ensuring data is correctly formatted,
+         chart options are appropriate, and charts are redrawn on data changes.
+    -->
 </body>
 </html>
