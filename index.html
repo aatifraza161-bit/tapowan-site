@@ -1080,6 +1080,8 @@
                                     <th class="text-left py-3 px-4">Class</th>
                                     <th class="text-left py-3 px-4">Date</th>
                                     <th class="text-left py-3 px-4">Status</th>
+                                    <th class="text-left py-3 px-4">Arrival Time</th>
+                                    <th class="text-left py-3 px-4">Departure Time</th>
                                     <th class="text-left py-3 px-4">Remarks</th>
                                     <th class="text-left py-3 px-4">Actions</th>
                                 </tr>
@@ -1099,8 +1101,11 @@
                             <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700" type="button" onclick="showAddTeacherAttendanceModal()">
                                 <i class="fas fa-plus mr-2"></i>Mark Teacher Attendance
                             </button>
-                            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" type="button" onclick="startTeacherQrAttendance()">
-                                <i class="fas fa-qrcode mr-2"></i>Mark QR Attendance
+                            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" type="button" onclick="startTeacherQrAttendance('arrival')">
+                                <i class="fas fa-qrcode mr-2"></i>Mark Arrival QR
+                            </button>
+                            <button class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700" type="button" onclick="startTeacherQrAttendance('departure')">
+                                <i class="fas fa-qrcode mr-2"></i>Mark Departure QR
                             </button>
                             <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700" type="button" onclick="exportTeacherAttendanceToExcel()">
                                 <i class="fas fa-file-excel mr-2"></i>Export to Excel
@@ -1113,7 +1118,7 @@
                     <div class="module-card p-6">
                         <!-- QR Scanner Section for Teachers (initially hidden) -->
                         <div id="teacherQrScannerSection" class="hidden mb-6 p-4 border rounded-lg bg-gray-50">
-                            <h4 class="text-lg font-medium text-gray-700 mb-3">Scan QR Code for Teacher Attendance</h4>
+                            <h4 class="text-lg font-medium text-gray-700 mb-3" id="teacherQrScannerTitle">Scan QR Code for Teacher Attendance</h4>
                             <div id="teacherQrVideo" class="w-full h-64 bg-gray-200 rounded-lg"></div>
                             <div class="mt-4 flex justify-end">
                                 <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" onclick="stopTeacherQrAttendance()">Stop Scan</button>
@@ -1161,6 +1166,8 @@
                                     <th class="text-left py-3 px-4">Subject</th>
                                     <th class="text-left py-3 px-4">Date</th>
                                     <th class="text-left py-3 px-4">Status</th>
+                                    <th class="text-left py-3 px-4">Arrival Time</th>
+                                    <th class="text-left py-3 px-4">Departure Time</th>
                                     <th class="text-left py-3 px-4">Remarks</th>
                                     <th class="text-left py-3 px-4">Actions</th>
                                 </tr>
@@ -1876,6 +1883,14 @@
                             </select>
                         </div>
                         <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="arrivalTime">Arrival Time</label>
+                            <input class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" id="arrivalTime" name="arrivalTime" type="time">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="departureTime">Departure Time</label>
+                            <input class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" id="departureTime" name="departureTime" type="time">
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="attendanceRemarks">Remarks (Optional)</label>
                             <textarea class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" id="attendanceRemarks" name="attendanceRemarks" rows="2"></textarea>
                         </div>
@@ -1922,6 +1937,14 @@
                                 <option value="Absent">Absent</option>
                                 <option value="Leave">Leave</option>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="teacherArrivalTime">Arrival Time</label>
+                            <input class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" id="teacherArrivalTime" name="teacherArrivalTime" type="time">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="teacherDepartureTime">Departure Time</label>
+                            <input class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" id="teacherDepartureTime" name="teacherDepartureTime" type="time">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="teacherAttendanceRemarks">Remarks (Optional)</label>
