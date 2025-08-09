@@ -196,18 +196,20 @@
                         </div>
                     </div>
                     <!-- End Notification Dropdown UI -->
-                    <div class="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100" id="userProfileToggle" onclick="toggleUserDropdown()">
-                        <span id="loggedInUserName" class="font-medium text-gray-700">Admin</span>
-                        <i class="fas fa-chevron-down text-xs text-gray-500"></i>
-                    </div>
-                    <!-- User Dropdown UI -->
-                    <div class="user-dropdown hidden" id="userDropdown">
-                        <div class="user-dropdown-item" id="logoutButton" onclick="logout()">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Logout</span>
+                    <div class="relative"> <!-- Added relative positioning for the dropdown -->
+                        <div class="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-gray-100" id="userProfileToggle">
+                            <span id="loggedInUserName" class="font-medium text-gray-700">Admin</span>
+                            <i class="fas fa-chevron-down text-xs text-gray-500"></i>
                         </div>
+                        <!-- User Dropdown UI -->
+                        <div class="user-dropdown hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20" id="userDropdown">
+                            <div class="user-dropdown-item px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer" id="logoutButton">
+                                <i class="fas fa-sign-out-alt mr-2"></i>
+                                <span>Logout</span>
+                            </div>
+                        </div>
+                        <!-- End User Dropdown UI -->
                     </div>
-                    <!-- End User Dropdown UI -->
                 </div>
             </header>
             <!-- Dashboard Content -->
@@ -302,25 +304,6 @@
                                 <i class="fas fa-calendar-day"></i>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <!-- New: Dashboard Charts Section -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <div class="module-card p-6 animate-fadeIn" style="animation-delay: 1.0s;">
-                        <h3 class="text-lg font-semibold mb-4">Financial Overview</h3>
-                        <canvas id="financeOverviewChart" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="module-card p-6 animate-fadeIn" style="animation-delay: 1.1s;">
-                        <h3 class="text-lg font-semibold mb-4">Student Attendance Overview (Last 7 Days)</h3>
-                        <canvas id="studentAttendanceChart" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="module-card p-6 animate-fadeIn" style="animation-delay: 1.2s;">
-                        <h3 class="text-lg font-semibold mb-4">Teacher Attendance Overview (Last 7 Days)</h3>
-                        <canvas id="teacherAttendanceChart" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="module-card p-6 animate-fadeIn" style="animation-delay: 1.3s;">
-                        <h3 class="text-lg font-semibold mb-4">Monthly Attendance Trend</h3>
-                        <canvas id="monthlyAttendanceTrend" class="w-full h-64"></canvas>
                     </div>
                 </div>
                 <!-- Modules Section -->
@@ -507,7 +490,7 @@
                     <!-- Calendar -->
                     <div class="module-card p-6 animate-fadeIn" style="animation-delay: 2.8s;">
                         <h3 class="text-lg font-semibold mb-4">School Calendar</h3>
-                        <div class="min-h-[400px] fc-theme-standard" id="calendar"></div>
+                        <div class="min-h-[400px] fc-theme-standard" id="dashboardCalendar"></div>
                     </div>
                 </div>
             </main>
@@ -863,23 +846,7 @@
                                 </tbody>
                             </table>
                         </div>
-                    
-<!-- In index.html, within the teacherDetailsModal div -->
-<div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="teacherDetailsModal" aria-labelledby="teacherDetailsModalTitle" aria-modal="true" role="dialog" tabindex="-1">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-semibold" id="teacherDetailsModalTitle">Teacher Details</h3>
-            <button class="text-gray-500 hover:text-gray-700" id="closeTeacherDetailsModal" type="button" aria-label="Close teacher details modal">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="space-y-4" id="teacherDetailsContent">
-            <!-- Teacher details will be dynamically loaded here -->
-        </div>
-    </div>
-</div>
-
-</div>
+                    </div>
                 </div>
                 <!-- Payroll Module -->
                 <div class="module-content p-6 hidden" id="payrollModule">
@@ -960,12 +927,18 @@
                 <div class="module-content p-6 hidden" id="attendanceModule">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-2xl font-semibold">Attendance Management</h3>
-                        <div class="flex space-x-2"> <!-- Added a flex container for buttons -->
+                        <div class="flex space-x-2">
                             <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" type="button" onclick="showAddAttendanceModal()">
                                 <i class="fas fa-plus mr-2"></i>Mark Individual Attendance
                             </button>
                             <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" type="button" onclick="startQrAttendance()">
                                 <i class="fas fa-qrcode mr-2"></i>Mark QR Attendance
+                            </button>
+                            <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700" type="button" onclick="exportStudentAttendanceToExcel()">
+                                <i class="fas fa-file-excel mr-2"></i>Export to Excel
+                            </button>
+                            <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700" type="button" onclick="exportStudentAttendanceToPdf()">
+                                <i class="fas fa-file-pdf mr-2"></i>Export to PDF
                             </button>
                         </div>
                     </div>
@@ -973,12 +946,13 @@
                         <!-- QR Scanner Section (initially hidden) -->
                         <div id="qrScannerSection" class="hidden mb-6 p-4 border rounded-lg bg-gray-50">
                             <h4 class="text-lg font-medium text-gray-700 mb-3">Scan QR Code for Attendance</h4>
-                            <div id="qrVideo" class="w-full h-64 bg-gray-200 rounded-lg"></div> <!-- Changed to div for html5-qrcode -->
+                            <div id="qrVideo" class="w-full h-64 bg-gray-200 rounded-lg"></div>
                             <div class="mt-4 flex justify-end">
                                 <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" onclick="stopQrAttendance()">Stop Scan</button>
                             </div>
                         </div>
-                        <h4 class="text-lg font-medium text-gray-700 mb-3">Filter Attendance</h4>
+
+                        <h4 class="text-lg font-medium text-gray-700 mb-3">Filter Student Attendance Records</h4>
                         <div class="flex flex-wrap items-center gap-4 mb-4">
                             <input class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto" id="attendanceStudentNameFilter" placeholder="Search by Student Name" type="text" name="attendanceStudentNameFilter"/>
                             <select class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto" id="attendanceClassFilter" name="attendanceClassFilter">
@@ -1001,6 +975,7 @@
                                 <i class="fas fa-filter mr-2"></i>Filter
                             </button>
                         </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <div class="module-card p-4 text-center">
                                 <p class="text-gray-500 text-sm">Total Students</p>
@@ -1015,7 +990,8 @@
                                 <h4 class="text-xl font-bold text-red-600" id="attendanceTotalAbsent">0</h4>
                             </div>
                         </div>
-                        <h4 class="text-lg font-medium text-gray-700 mb-3 mt-6">Class-wise Attendance</h4>
+
+                        <h4 class="text-lg font-medium text-gray-700 mb-3 mt-6">Class-wise Attendance Marking</h4>
                         <div class="flex flex-wrap items-center gap-4 mb-4">
                             <select class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto" id="classAttendanceSelect" name="classAttendanceSelect">
                                 <option value="">Select Class</option>
@@ -1036,7 +1012,7 @@
                             <button class="bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 w-full md:w-auto" id="loadClassStudentsBtn" type="button">
                                 <i class="fas fa-users mr-2"></i>Load Students
                             </button>
-                            <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 w-full md:w-auto" id="markClassAttendanceBtn" type="button">
+                            <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 w-full md:w-auto" id="markAllPresentBtn" type="button">
                                 <i class="fas fa-check-double mr-2"></i>Mark All Present
                             </button>
                         </div>
@@ -1056,6 +1032,26 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <h4 class="text-lg font-medium text-gray-700 mb-3 mt-6">Student Attendance Records</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full">
+                                <thead>
+                                <tr>
+                                    <th class="text-left py-3 px-4">Student Name</th>
+                                    <th class="text-left py-3 px-4">Roll No.</th>
+                                    <th class="text-left py-3 px-4">Class</th>
+                                    <th class="text-left py-3 px-4">Date</th>
+                                    <th class="text-left py-3 px-4">Status</th>
+                                    <th class="text-left py-3 px-4">Remarks</th>
+                                    <th class="text-left py-3 px-4">Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody id="attendanceTableBody">
+                                <!-- Student attendance records will be dynamically loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <!-- Teacher Attendance Module -->
@@ -1069,6 +1065,12 @@
                             <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" type="button" onclick="startTeacherQrAttendance()">
                                 <i class="fas fa-qrcode mr-2"></i>Mark QR Attendance
                             </button>
+                            <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700" type="button" onclick="exportTeacherAttendanceToExcel()">
+                                <i class="fas fa-file-excel mr-2"></i>Export to Excel
+                            </button>
+                            <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700" type="button" onclick="exportTeacherAttendanceToPdf()">
+                                <i class="fas fa-file-pdf mr-2"></i>Export to PDF
+                            </button>
                         </div>
                     </div>
                     <div class="module-card p-6">
@@ -1080,6 +1082,7 @@
                                 <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" onclick="stopTeacherQrAttendance()">Stop Scan</button>
                             </div>
                         </div>
+                        <h4 class="text-lg font-medium text-gray-700 mb-3">Filter Teacher Attendance Records</h4>
                         <div class="flex flex-wrap items-center gap-4 mb-4">
                             <input class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-full md:w-auto" id="teacherAttendanceNameFilter" placeholder="Search by Teacher Name" type="text" name="teacherAttendanceNameFilter"/>
                             <select class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-full md:w-auto" id="teacherAttendanceSubjectFilter" name="teacherAttendanceSubjectFilter">
@@ -1112,6 +1115,7 @@
                                 <h4 class="text-xl font-bold text-red-600" id="teacherAttendanceTotalAbsent">0</h4>
                             </div>
                         </div>
+                        <h4 class="text-lg font-medium text-gray-700 mb-3 mt-6">Teacher Attendance Records</h4>
                         <div class="overflow-x-auto">
                             <table class="min-w-full">
                                 <thead>
@@ -1618,7 +1622,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="announcementContent">Content</label>
-                            <textarea class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" id="announcementContent" name="announcementContent" required="" rows="4"></textarea>
+                            <textarea class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" id="announcementContent" name="announcementContent" rows="4"></textarea>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" for="announcementStatus">Status</label>
@@ -1949,23 +1953,6 @@
                             Save Exam
                         </button>
                     </form>
-                </div>
-            </div>
-            <!-- Calendar Module (Duplicate, removed the first one and kept this one) -->
-            <div class="module-content p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 hidden" id="calendarModule">
-                <div class="lg:col-span-2 module-card p-6">
-                    <h3 class="text-2xl font-semibold mb-4 text-gray-800">School Event Calendar</h3>
-                    <div class="min-h-[500px]" id="calendar-full"></div>
-                </div>
-                <div class="lg:col-span-1 module-card p-6">
-                    <h3 class="text-2xl font-semibold mb-4 text-gray-800">Upcoming Holidays</h3>
-                    <div class="space-y-2" id="holidayList">
-                        <!-- Holidays will be dynamically loaded here -->
-                    </div>
-                    <!-- NEW: Add Holiday Button -->
-                    <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onclick="showAddHolidayModal()">
-                        <i class="fas fa-plus mr-2"></i>Add Holiday
-                    </button>
                 </div>
             </div>
 
