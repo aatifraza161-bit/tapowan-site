@@ -50,7 +50,10 @@
                 <label for="password">Password</label>
                 <input id="password" name="password" placeholder="12345678" required="" type="password"/>
             </div>
-            <button class="login-button" type="submit">Login</button>
+            <div class="flex justify-between items-center mt-4">
+                <button class="login-button" type="submit">Login</button>
+                <button class="login-button bg-blue-500 hover:bg-blue-600" type="button" id="signUpButton">Sign Up</button>
+            </div>
             <button class="mt-4 rounded-full p-2 bg-indigo-600 text-white" type="button" onclick="startVoiceAssistant()">
                 <i class="fas fa-microphone"></i>
             </button>
@@ -75,6 +78,40 @@
         </form>
     </div>
 </div>
+
+<!-- Sign Up Modal -->
+<div class="modal-overlay" id="signUpModal" aria-labelledby="signUpModalTitle" aria-modal="true" role="dialog" tabindex="-1">
+    <div class="modal-content">
+        <button class="modal-close-button" id="closeSignUpModal" type="button" aria-label="Close sign up modal">×</button>
+        <h2 id="signUpModalTitle">Sign Up for an Account</h2>
+        <form id="signUpForm">
+            <div class="form-group">
+                <label for="signUpFullName">Full Name</label>
+                <input id="signUpFullName" name="signUpFullName" placeholder="John Doe" required="" type="text"/>
+            </div>
+            <div class="form-group">
+                <label for="signUpEmail">Email</label>
+                <input id="signUpEmail" name="signUpEmail" placeholder="your.email@example.com" required="" type="email"/>
+            </div>
+            <div class="form-group">
+                <label for="signUpPassword">Password</label>
+                <input id="signUpPassword" name="signUpPassword" placeholder="********" required="" type="password"/>
+            </div>
+            <div class="form-group">
+                <label for="signUpRole">Role</label>
+                <select id="signUpRole" name="signUpRole" required="">
+                    <option value="">Select Role</option>
+                    <option value="admin">Admin</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="student">Student</option>
+                    <option value="staff">Staff</option>
+                </select>
+            </div>
+            <button class="login-button bg-blue-600 hover:bg-blue-700" type="submit">Create Account</button>
+        </form>
+    </div>
+</div>
+
 <!-- School Site UI -->
 <div id="school-site-ui" class="hidden">
     <div class="flex h-screen overflow-hidden">
