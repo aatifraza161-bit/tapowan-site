@@ -13,6 +13,7 @@ let profiles = []; // New global variable for profiles
 let exams = []; // Global variable for exams
 let homeworkAssignments = []; // Global variable for homework
 let holidays = []; // Global variable for holidays
+let currentInvoiceId = null; // New global variable for tracking the invoice being edited
 
 // Supabase Client Initialization (Replace with your actual keys)
 const SUPABASE_URL = 'https://zyvwttzwjweeslvjbatg.supabase.co'; // Replace with your Supabase URL
@@ -188,7 +189,7 @@ function exportTeacherAttendanceToExcel() {
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "TeacherAttendance");
-    XLSX.writeFile(wb, "teacher_attendance_data.xlsx");
+    XLSX.writeFile(wb, "teachers_attendance_data.xlsx");
     console.log('Teacher attendance data exported to Excel.');
 }
 
@@ -1241,6 +1242,7 @@ if (forgotPasswordForm) {
         } catch (err) {
             console.error('Unexpected error during password reset:', err);
             alert('An unexpected error occurred: ' + err.message);
+            await addAuditLog(email, 'Forgot Password (Unexpected)', 'Authentication', `Unexpected error: ${err.message}`);
         } finally {
             if (forgotPasswordModal) {
                 forgotPasswordModal.classList.remove('active');
@@ -1504,6 +1506,9 @@ if (addHolidayModal) {
         if (e.target === addHolidayModal) {
             addHolidayModal.classList.add('hidden');
             addHolidayModal.style.display = 'none';
+            if (addHolidayForm) {
+                addHolidayForm.reset();
+            }
             console.log('Add Holiday modal closed by outside click.');
         }
     });
@@ -1992,6 +1997,12 @@ function renderFinanceTable(filteredInvoices = invoices) {
                 <span class="px-2 py-1 ${statusBgClass} ${statusTextColorClass} text-xs rounded-full">${invoice.status}</span>
             </td>
             <td class="py-3 px-4 table-actions">
+                <button class="text-blue-600 mr-3" title="Edit Invoice" onclick="editInvoice('${invoice.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 mr-3" title="Delete Invoice" onclick="deleteInvoice('${invoice.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
                 <button class="text-blue-600 hover:text-blue-800 mr-3" title="View Details" onclick="showInvoiceDetailsModal('${invoice.id}')">
                     <i class="fas fa-eye"></i>
                 </button>
@@ -2032,6 +2043,14 @@ if (openAddInvoiceModalBtn) {
             addInvoiceModal.classList.remove('hidden');
             addInvoiceModal.style.display = 'flex';
         }
+        currentInvoiceId = null; // Reset for new invoice
+        if (document.getElementById('addInvoiceModalTitle')) {
+            document.getElementById('addInvoiceModalTitle').textContent = 'Add New Invoice';
+        }
+        if (document.getElementById('invoiceFormSubmitBtn')) {
+            document.getElementById('invoiceFormSubmitBtn').textContent = 'Add Invoice';
+        }
+        if (addInvoiceForm) addInvoiceForm.reset();
         populateInvoiceStudentSelect();
         console.log('Add Invoice modal opened.');
     });
@@ -2060,7 +2079,7 @@ if (addInvoiceModal) {
 }
 
 // Function to populate the student select dropdown in the Add Invoice modal
-async function populateInvoiceStudentSelect() {
+async function populateInvoiceStudentSelect(selectedStudentId = '') {
     if (!invoiceStudentSelect) return;
 
     if (students.length === 0) {
@@ -2072,10 +2091,69 @@ async function populateInvoiceStudentSelect() {
         const option = document.createElement('option');
         option.value = student.id;
         option.textContent = `${student.name} (Class: ${student.class})`;
+        if (student.id === selectedStudentId) {
+            option.selected = true;
+        }
         invoiceStudentSelect.appendChild(option);
     });
     console.log('Invoice student select populated.');
 }
+
+// New function to edit an invoice
+window.editInvoice = async function(id) {
+    console.log(`Editing invoice ID: ${id}`);
+    const invoice = invoices.find(inv => inv.id === id);
+    if (invoice) {
+        currentInvoiceId = invoice.id;
+        if (document.getElementById('addInvoiceModalTitle')) {
+            document.getElementById('addInvoiceModalTitle').textContent = 'Edit Invoice';
+        }
+        if (document.getElementById('invoiceFormSubmitBtn')) {
+            document.getElementById('invoiceFormSubmitBtn').textContent = 'Save Changes';
+        }
+
+        document.getElementById('invoiceNumber').value = invoice.invoice_number;
+        document.getElementById('invoiceTotalAmount').value = invoice.amount;
+        document.getElementById('invoicePaidAmount').value = invoice.paid_amount || 0;
+        document.getElementById('invoiceIssueDate').value = invoice.date;
+        document.getElementById('invoiceDueDate').value = invoice.due_date || '';
+        document.getElementById('invoiceStatus').value = invoice.status;
+
+        populateInvoiceStudentSelect(invoice.student_id); // Pre-select student
+
+        if (addInvoiceModal) {
+            addInvoiceModal.classList.remove('hidden');
+            addInvoiceModal.style.display = 'flex';
+        }
+        console.log(`Invoice ${id} data loaded for editing.`);
+    } else {
+        alert('Invoice not found.');
+        console.error(`Invoice with ID ${id} not found for editing.`);
+    }
+};
+
+// New function to delete an invoice
+window.deleteInvoice = async function(id) {
+    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+    const userEmail = loggedInUser?.email || 'admin';
+    if (confirm('Are you sure you want to delete this invoice?')) {
+        console.log(`Deleting invoice ID: ${id}`);
+        try {
+            const { error } = await supabase.from('finance').delete().eq('id', id);
+            if (error) throw error;
+
+            const deletedInvoice = invoices.find(inv => inv.id === id);
+            await addAuditLog(userEmail, 'Deleted Invoice', 'Finance', `Deleted invoice ${deletedInvoice?.invoice_number || id}`);
+            alert('Invoice deleted successfully!');
+            await fetchInvoices(); // Re-fetch to update the table
+            console.log(`Invoice ${id} deleted successfully.`);
+        } catch (error) {
+            alert('Error deleting invoice: ' + error.message);
+            console.error('Supabase error deleting invoice:', error);
+            await addAuditLog(userEmail, 'Delete Invoice Failed', 'Finance', `Error: ${error.message}`);
+        }
+    }
+};
 
 
 if (addInvoiceForm) {
@@ -2102,29 +2180,39 @@ if (addInvoiceForm) {
 
         if (!studentId || !invoiceNumber || isNaN(invoiceTotalAmount) || isNaN(invoicePaidAmount) || !invoiceIssueDate || !invoiceDueDate || !invoiceStatus) {
             alert('Please fill in all fields correctly.');
-            console.warn('Add Invoice form submission failed: Missing or invalid fields.');
+            console.warn('Add/Edit Invoice form submission failed: Missing or invalid fields.');
             return;
         }
 
-        console.log(`Submitting invoice ${invoiceNumber}...`);
+        const invoiceData = {
+            student_id: studentId,
+            invoice_number: invoiceNumber,
+            amount: invoiceTotalAmount,
+            paid_amount: invoicePaidAmount,
+            date: invoiceIssueDate,
+            due_date: invoiceDueDate,
+            status: invoiceStatus
+        };
+
         try {
-            const { data, error } = await supabase.from('finance').insert([
-                {
-                    student_id: studentId,
-                    invoice_number: invoiceNumber,
-                    amount: invoiceTotalAmount,
-                    paid_amount: invoicePaidAmount,
-                    date: invoiceIssueDate,
-                    due_date: invoiceDueDate,
-                    status: invoiceStatus
-                }
-            ]).select();
+            let result;
+            if (currentInvoiceId) {
+                // Update existing invoice
+                console.log(`Updating invoice ${currentInvoiceId}...`);
+                result = await supabase.from('finance').update(invoiceData).eq('id', currentInvoiceId).select();
+                await addAuditLog(userEmail, 'Updated Invoice', 'Finance', `Updated invoice ${invoiceNumber}`);
+                alert('Invoice updated successfully!');
+            } else {
+                // Add new invoice
+                console.log(`Adding new invoice ${invoiceNumber}...`);
+                result = await supabase.from('finance').insert([invoiceData]).select();
+                await addAuditLog(userEmail, 'Added Invoice', 'Finance', `Added invoice ${invoiceNumber}`);
+                alert('Invoice added successfully!');
+            }
 
-            if (error) throw error;
+            if (result.error) throw result.error;
 
-            alert('Invoice added successfully!');
-            await addAuditLog(userEmail, 'Added Invoice', 'Finance', `Added invoice ${invoiceNumber} for ₹${invoiceTotalAmount}`);
-            await fetchInvoices();
+            await fetchInvoices(); // Re-fetch to update the table
             if (addInvoiceModal) {
                 addInvoiceModal.classList.add('hidden');
                 addInvoiceModal.style.display = 'none';
@@ -2132,11 +2220,11 @@ if (addInvoiceForm) {
             if (addInvoiceForm) {
                 addInvoiceForm.reset();
             }
-            console.log('Invoice added successfully.');
+            console.log('Invoice operation completed successfully.');
         } catch (error) {
-            alert('Error adding invoice: ' + error.message);
-            console.error('Supabase error adding invoice:', error);
-            await addAuditLog(userEmail, 'Add Invoice Failed', 'Finance', `Error: ${error.message}`);
+            alert('Error saving invoice: ' + error.message);
+            console.error('Supabase error saving invoice:', error);
+            await addAuditLog(userEmail, 'Save Invoice Failed', 'Finance', `Error: ${error.message}`);
         }
     });
 }
@@ -5077,7 +5165,7 @@ async function generateStudentPerformanceReport(className, startDate, endDate) {
                     reportHtml += `
                         <tr>
                             <td class="px-4 py-2">${index === 0 ? student.name : ''}</td>
-                            <td class="px-4 py-2">${index === 0 ? student.class : ''}</td>
+                            <td class="px-4 py-2">${student.class}</td>
                             <td class="px-4 py-2">${score.subject}</td>
                             <td class="px-4 py-2">${score.percentage}%</td>
                             <td class="px-4 py-2">${score.grade}</td>
