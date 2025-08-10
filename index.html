@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-    <!-- Chart.js for reports and dashboard charts -->
+    <!-- Chart.js for dashboard charts (removed from reports module) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- html5-qrcode for QR scanning -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
@@ -1201,19 +1201,29 @@
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-2xl font-semibold">Reports Dashboard</h3>
                         <div class="flex space-x-2">
-                            <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" type="button" onclick="alert('Generate Report functionality goes here!')">
-                                <i class="fas fa-plus mr-2"></i>Generate Report
-                            </button>
                             <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700" type="button" onclick="exportReportsToPdf()">
                                 <i class="fas fa-file-pdf mr-2"></i>Export to PDF
+                            </button>
+                            <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700" type="button" onclick="exportReportsToCsv()">
+                                <i class="fas fa-file-csv mr-2"></i>Export to CSV
                             </button>
                         </div>
                     </div>
                     <div class="module-card p-6 mb-8">
-                        <h4 class="text-lg font-medium text-gray-700 mb-3">Report Filters</h4>
+                        <h4 class="text-lg font-medium text-gray-700 mb-3">Generate Report</h4>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1" for="reportClassFilter">Class</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="reportType">Report Type</label>
+                                <select class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" id="reportType">
+                                    <option value="">Select Report Type</option>
+                                    <option value="student_performance">Student Performance Report</option>
+                                    <option value="attendance_summary">Attendance Summary</option>
+                                    <option value="financial_overview">Financial Overview</option>
+                                    <option value="teacher_load">Teacher Load Report</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="reportClassFilter">Class (Optional)</label>
                                 <select class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" id="reportClassFilter">
                                     <option value="">All Classes</option>
                                     <option>Grade 1</option>
@@ -1231,36 +1241,24 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1" for="reportStartDate">Start Date</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="reportStartDate">Start Date (Optional)</label>
                                 <input class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" id="reportStartDate" type="date">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1" for="reportEndDate">End Date</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="reportEndDate">End Date (Optional)</label>
                                 <input class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" id="reportEndDate" type="date">
                             </div>
                         </div>
                         <div class="mt-4 text-right">
-                            <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600" onclick="applyReportFilters()">
-                                <i class="fas fa-filter mr-2"></i>Apply Filters
+                            <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600" onclick="generateReport()">
+                                <i class="fas fa-file-alt mr-2"></i>Generate Report
                             </button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="module-card p-6">
-                            <h4 class="font-medium mb-3">Student Attendance Summary</h4>
-                            <canvas class="w-full h-64" id="reportsAttendanceChart"></canvas>
-                        </div>
-                        <div class="module-card p-6">
-                            <h4 class="font-medium mb-3">Student Performance by Subject</h4>
-                            <canvas class="w-full h-64" id="reportsPerformanceChart"></canvas>
-                        </div>
-                        <div class="module-card p-6">
-                            <h4 class="font-medium mb-3">Student Status Distribution</h4>
-                            <canvas class="w-full h-64" id="reportsStudentStatusChart"></canvas>
-                        </div>
-                        <div class="module-card p-6">
-                            <h4 class="font-medium mb-3">Class-wise Average Performance</h4>
-                            <canvas class="w-full h-64" id="reportsClassPerformanceChart"></canvas>
+                    <div class="module-card p-6">
+                        <h4 class="font-medium mb-3">Generated Report</h4>
+                        <div id="reportDisplayArea" class="min-h-[300px] bg-gray-50 p-4 rounded-lg overflow-auto text-gray-700">
+                            <p class="text-center text-gray-500">Select a report type and click "Generate Report" to view results here.</p>
                         </div>
                     </div>
                 </div>
@@ -2181,10 +2179,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <script src="script.js"></script>
-    <!-- Placeholder for chart-related JavaScript fixes.
-         Actual chart initialization and updates would be in script.js.
-         For example, ensuring data is correctly formatted,
-         chart options are appropriate, and charts are redrawn on data changes.
-    -->
 </body>
 </html>
