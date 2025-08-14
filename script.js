@@ -107,7 +107,6 @@ async function toggleTeacherFaceRecognitionSection() {
 // Global variables for face-api.js
 const teacherFaceRecognitionVideo = document.getElementById('teacherFaceRecognitionVideo');
 const teacherFaceRecognitionCanvas = document.getElementById('teacherFaceRecognitionCanvas');
-const teacherFaceRecognitionFeedback = document.getElementById('teacherFaceRecognitionFeedback');
 let faceDetectionInterval = null; // To store the interval ID for face detection
 
 // =============================================
