@@ -968,6 +968,13 @@
                             <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" type="button" onclick="showAddAttendanceModal()">
                                 <i class="fas fa-plus mr-2"></i>Mark Individual Attendance
                             </button>
+                            <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600" type="button" onclick="toggleStudentFaceRecognitionSection()">
+                                <i class="fas fa-camera mr-2"></i>Toggle Face Recognition
+                            </button>
+                            <button class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600" type="button" onclick="toggleStudentFaceRegistrationSection()">
+                            <i class="fas fa-user-plus mr-2"></i>Register Face
+                        </button>
+
                             <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" type="button" onclick="startQrAttendance()">
                                 <i class="fas fa-qrcode mr-2"></i>Mark QR Attendance
                             </button>
@@ -988,6 +995,33 @@
                                 <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" onclick="stopQrAttendance()">Stop Scan</button>
                             </div>
                         </div>
+                         <!-- Student Attendance Face Recognition Section -->
+    <div id="studentFaceRecognitionSection" class="hidden p-4">
+        <h3 class="text-lg font-bold mb-2">Student Face Recognition</h3>
+        <video id="studentFaceRecognitionVideo" width="320" height="240" autoplay muted></video>
+        <canvas id="studentFaceRecognitionCanvas" width="320" height="240"></canvas>
+        <p id="studentFaceRecognitionFeedback" class="mt-2 text-sm text-gray-600"></p>
+        <div class="mt-3 flex gap-2">
+            <button onclick="startStudentFaceRecognition()" class="bg-green-600 text-white px-4 py-2 rounded">Start Face Recognition</button>
+            <button onclick="stopStudentFaceRecognition()" class="bg-red-600 text-white px-4 py-2 rounded">Stop</button>
+        </div>
+    </div>
+</div>
+
+<!-- Student Face Registration Section -->
+<div id="studentFaceRegistrationSection" class="hidden p-4">
+    <h3 class="text-lg font-bold mb-2">Register Student Face</h3>
+    <video id="studentFaceRegVideo" width="320" height="240" autoplay muted></video>
+    <canvas id="studentFaceRegCanvas" width="320" height="240"></canvas>
+    <input type="text" id="studentFaceRegId" placeholder="Enter Student ID" class="border p-2 mt-2 w-full"/>
+    <p id="studentFaceRegFeedback" class="mt-2 text-sm text-gray-600"></p>
+    <div class="mt-3 flex gap-2">
+        <button onclick="startStudentFaceRegistration()" class="bg-green-600 text-white px-4 py-2 rounded">Capture & Save</button>
+        <button onclick="stopStudentFaceRegistration()" class="bg-red-600 text-white px-4 py-2 rounded">Stop</button>
+    </div>
+</div>
+
+
 
                         <h4 class="text-lg font-medium text-gray-700 mb-3">Filter Student Attendance Records</h4>
                         <div class="flex flex-wrap items-center gap-4 mb-4">
@@ -1101,6 +1135,14 @@
                             <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700" type="button" onclick="showAddTeacherAttendanceModal()">
                                 <i class="fas fa-plus mr-2"></i>Mark Teacher Attendance
                             </button>
+                                <!-- Inside teacher-attendanceModule -->
+                             <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600" type="button" onclick="toggleTeacherFaceRecognitionSection()">
+                                <i class="fas fa-camera mr-2"></i>Toggle Face Recognition
+                            </button>
+                            <button class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600" type="button" onclick="toggleTeacherFaceRegistrationSection()">
+                            <i class="fas fa-user-plus mr-2"></i>Register Face
+                        </button>
+
                             <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" type="button" onclick="startTeacherQrAttendance('arrival')">
                                 <i class="fas fa-qrcode mr-2"></i>Mark Arrival QR
                             </button>
@@ -1124,6 +1166,39 @@
                                 <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" onclick="stopTeacherQrAttendance()">Stop Scan</button>
                             </div>
                         </div>
+                       <!-- START NEW CODE INSERTION HERE -->
+                        <div id="teacherFaceRecognitionSection" class="hidden mb-6 p-4 border rounded-lg bg-gray-50">
+                            <h3 class="text-xl font-semibold mb-4">Teacher Face Recognition Attendance</h3>
+                            <div class="relative w-full h-64 bg-gray-200 rounded-lg overflow-hidden">
+                                <!-- EXACT LOCATION FOR VIDEO AND CANVAS -->
+                                <video id="teacherFaceRecognitionVideo" width="100%" height="100%" autoplay muted playsinline class="object-cover"></video>
+                                <canvas id="teacherFaceRecognitionCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                            </div>
+                            <p id="teacherFaceRecognitionFeedback" class="mt-2 text-center text-sm text-gray-600"></p>
+                            <div class="flex justify-center mt-4">
+                                <button onclick="startTeacherFaceRecognition()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 mr-2">Start Face Recognition</button>
+                                <button onclick="stopTeacherFaceRecognition()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Stop Face Recognition</button>
+                            </div>
+                        </div>
+                        <!-- END NEW CODE INSERTION HERE -->
+                         
+                         <!-- Teacher Face Registration Section -->
+                        <div id="teacherFaceRegistrationSection" class="hidden p-4">
+                            <h3 class="text-lg font-bold mb-2">Register Teacher Face</h3>
+                            <video id="teacherFaceRegVideo" width="320" height="240" autoplay muted></video>
+                            <canvas id="teacherFaceRegCanvas" width="320" height="240"></canvas>
+                            <input type="text" id="teacherFaceRegId" placeholder="Enter Teacher ID" class="border p-2 mt-2 w-full"/>
+                            <p id="teacherFaceRegFeedback" class="mt-2 text-sm text-gray-600"></p>
+                            <div class="mt-3 flex gap-2">
+                                <button onclick="startTeacherFaceRegistration()" class="bg-green-600 text-white px-4 py-2 rounded">Capture & Save</button>
+                                <button onclick="stopTeacherFaceRegistration()" class="bg-red-600 text-white px-4 py-2 rounded">Stop</button>
+                            </div>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-700 mb-3">Filter Teacher Attendance Records</h4>
+                        <!-- ... rest of your teacher attendance module content ... -->
+                    </div>
+                </div>
+
                         <h4 class="text-lg font-medium text-gray-700 mb-3">Filter Teacher Attendance Records</h4>
                         <div class="flex flex-wrap items-center gap-4 mb-4">
                             <input class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-full md:w-auto" id="teacherAttendanceNameFilter" placeholder="Search by Teacher Name" type="text" name="teacherAttendanceNameFilter"/>
@@ -2179,5 +2254,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <script src="script.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 </body>
 </html>
