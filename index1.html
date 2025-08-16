@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Attendance System</title>
+  <!-- Face API & Supabase -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --warn:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; background:#0b1220; color:var(--text); }
+    header { padding:20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #1f2937; position:sticky; top:0; background:#0b1220; z-index:10; }
+    h1 { margin:0; font-size:20px; letter-spacing:0.3px; }
+    .container { max-width:1100px; margin: 20px auto; padding: 0 16px; }
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(12, 1fr); }
+    .card { background: var(--card); border:1px solid #1f2937; border-radius:14px; padding:16px; }
+    .col-4 { grid-column: span 4; }
+    .col-8 { grid-column: span 8; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .stack { display:grid; gap:10px; }
+    label { font-size:12px; color:var(--muted); }
+    input, select { background:#0b1220; color:var(--text); border:1px solid #293246; padding:10px 12px; border-radius:10px; width:100%; }
+    button { background:#0b1220; color:var(--text); border:1px solid #2a3348; padding:10px 14px; border-radius:10px; cursor:pointer; }
+    button.primary { background: #16a34a; border-color:#16a34a; color:#02130a; font-weight:600; }
+    button.warn { background:#ef4444; border-color:#ef4444; color:#220404; }
+    .status { font-size:12px; color:var(--muted); min-height:18px; }
+    .pill { padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #334155; color:#cbd5e1; }
+    .ok { background: rgba(34,197,94,.12); border-color:#14532d; color:#86efac; }
+    .bad { background: rgba(239,68,68,.12); border-color:#7f1d1d; color:#fecaca; }
+    video, canvas { width:100%; max-height:380px; background:#000; border-radius:12px; border:1px solid #1f2937; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; }
+    .small { font-size:12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .footer { margin: 20px 0; text-align:center; color:#64748b; font-size:12px; }
+    @media (max-width: 900px) { .col-4, .col-8 { grid-column: span 12; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Face Attendance System</h1>
+    <div class="row">
+      <span id="modelsBadge" class="pill">Models: <span class="mono" id="modelsState">loading…</span></span>
+      <span id="cameraBadge" class="pill">Camera: <span class="mono" id="cameraState">idle</span></span>
+      <span id="supabaseBadge" class="pill">Supabase: <span class="mono" id="supabaseState">not ready</span></span>
+    </div>
+  </header>
+
+  <div class="container stack">
+    <!-- CONFIG -->
+    <div class="card">
+      <div class="grid">
+        <div class="col-8 stack">
+          <div class="row" style="align-items:flex-end; gap:12px;">
+            <div style="flex:1;">
+              <label>Supabase URL</label>
+              <input id="confSupabaseUrl" placeholder="https://xxxxx.supabase.co" />
+            </div>
+            <div style="flex:1;">
+              <label>Supabase anon key</label>
+              <input id="confSupabaseKey" placeholder="eyJhbGciOiJI..." />
+            </div>
+            <div style="width:220px;">
+              <label>Models base URL</label>
+              <input id="confModelsUrl" placeholder="/models" />
+            </div>
+            <div>
+              <button class="primary" id="applyConfig">Apply</button>
+            </div>
+          </div>
+          <div class="small status">Tip: host Face API model files at <span class="mono">/models</span> (ssd_mobilenetv1, tiny_face_detector, face_landmark_68, face_recognition).</div>
+        </div>
+        <div class="col-4 stack">
+          <div class="stack">
+            <label>Mode</label>
+            <div class="row">
+              <button id="modeTeacher" class="primary">Teacher</button>
+              <button id="modeStudent">Student</button>
+            </div>
+          </div>
+          <div class="stack">
+            <label>Detection Model</label>
+            <select id="detectorSelect">
+              <option value="ssd">SSD Mobilenet V1 (accurate)</option>
+              <option value="tiny">Tiny Face Detector (fast)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECOGNITION PANEL -->
+    <div class="grid">
+      <div class="col-8 card stack">
+        <div class="row toolbar">
+          <button class="primary" id="startRec">Start Recognition</button>
+          <button class="warn" id="stopRec">Stop</button>
+          <button id="toggleOverlay">Toggle Overlay</button>
+          <span class="small">Threshold: <span class="mono" id="threshLabel">0.6</span></span>
+          <input id="threshold" type="range" min="0.3" max="1.0" value="0.6" step="0.05" style="width:200px;" />
+        </div>
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="overlay" width="640" height="480"></canvas>
+        <div class="status" id="recStatus">Idle.</div>
+      </div>
+      <div class="col-4 card stack">
+        <div class="stack">
+          <label>Loaded descriptors</label>
+          <div class="row">
+            <button id="reloadDescriptors">Reload</button>
+            <span id="descCount" class="pill">0</span>
+          </div>
+        </div>
+        <div class="stack">
+          <label>Last Match</label>
+          <div class="row" style="align-items:center; gap:8px;">
+            <span id="lastMatch" class="pill ok" style="display:none;"></span>
+            <span id="lastMiss" class="pill bad" style="display:none;"></span>
+          </div>
+        </div>
+        <div class="stack">
+          <label>Attendance</label>
+          <div class="row">
+            <button id="markPresent">Mark Present (manual)</button>
+          </div>
+          <div class="small status" id="attnStatus">No attendance action yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTRATION PANEL -->
+    <div class="grid">
+      <div class="col-8 card stack">
+        <div class="row toolbar">
+          <div style="min-width:180px;">
+            <label id="idLabel">Teacher UUID / ID</label>
+            <input id="regId" placeholder="e.g., UUID from DB" />
+          </div>
+          <div>
+            <label>Samples</label>
+            <select id="sampleCount">
+              <option value="1">1</option>
+              <option value="3" selected>3</option>
+              <option value="5">5</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <button id="startReg">Start Registration</button>
+          <button id="captureOne">Capture Sample</button>
+          <button class="primary" id="saveReg">Save Descriptors</button>
+          <button class="warn" id="cancelReg">Cancel</button>
+        </div>
+        <div class="status" id="regStatus">Provide an ID, then capture descriptors.</div>
+      </div>
+      <div class="col-4 card stack">
+        <label>Captured vectors</label>
+        <div class="small mono" id="vecsBox" style="max-height:180px; overflow:auto; background:#0b1220; border:1px dashed #334155; padding:8px; border-radius:10px;"></div>
+      </div>
+    </div>
+
+    <div class="footer">© Face Attendance Demo. Ensure your Supabase tables exist: <span class="mono">teacher_face_descriptors</span>, <span class="mono">student_face_descriptors</span>, <span class="mono">teacher_attendance</span>, <span class="mono">attendance</span>.</div>
+  </div>
+
+  <script defer src="./script1.js"></script>
+</body>
+</html>
