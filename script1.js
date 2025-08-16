@@ -18,9 +18,9 @@
 */
 
 // ---------- Global State ----------
-let SUPABASE_URL = '';
-let SUPABASE_ANON_KEY = '';
-let MODEL_URL = '/models';
+let SUPABASE_URL = 'https://zyvwttzwjweeslvjbatg.supabase.co';
+let SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5dnd0dHp3andlZXNsdmpiYXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NTQwODMsImV4cCI6MjA2OTUzMDA4M30.pgzB45XBJAyGBlkKUJF4Jr0yVNunXjwa8p8JOaX7Nso';
+let MODEL_URL = 'https://tapowan-site.vercel.app/models';
 
 let supabaseClient = null;
 let currentMode = 'teacher'; // 'teacher' | 'student'
