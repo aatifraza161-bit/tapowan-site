@@ -14,519 +14,18 @@ let exams = []; // Global variable for exams
 let homeworkAssignments = []; // Global variable for homework
 let holidays = []; // Global variable for holidays
 let currentInvoiceId = null; // New global variable for tracking the invoice being edited
-let teacherFaceRegStream = null;
-const teacherFaceRegVideo = document.getElementById('teacherFaceRegVideo');
-const teacherFaceRegCanvas = document.getElementById('teacherFaceRegCanvas');
-const teacherFaceRegFeedback = document.getElementById('teacherFaceRegFeedback');
-
+// Global variables for Face Attendance
+let faceDetectionModelsLoaded = false;
+let faceMatcher = null;
+let labeledFaceDescriptors = [];
+let videoStream = null;
+let faceAttendanceInterval = null;
+const FACE_MODELS_PATH = '/models'; // Assuming your models folder is at the root
 
 // Supabase Client Initialization (Replace with your actual keys)
 const SUPABASE_URL = 'https://zyvwttzwjweeslvjbatg.supabase.co'; // Replace with your Supabase URL
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5dnd0dHp3andlZXNsdmpiYXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NTQwODMsImV4cCI6MjA2OTUzMDA4M30.pgzB45XBJAyGBlkKUJF4Jr0yVNunXjwa8p8JOaX7Nso'; // Replace with your actual Supabase Anon Key
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Global variable to store loaded labeled descriptors
-let labeledDescriptors = [];
-
-/**
- * Loads labeled face descriptors for a given user type (e.g., 'teacher', 'student')
- * from Supabase storage.
- * @param {string} userType - 'teacher' or 'student'
- * @returns {Promise<faceapi.LabeledFaceDescriptors[]>} An array of LabeledFaceDescriptors.
- */
-async function loadLabeledDescriptors(userType) {
-    console.log(`Loading labeled descriptors for ${userType}s...`);
-    const tableName = `${userType}_face_descriptors`; // Assuming a table like 'teacher_face_descriptors'
-    // If you store descriptors directly in 'teacher_faces' table, adjust this:
-    // const tableName = `${userType}_faces`;
-
-    try {
-        const { data, error } = await supabase
-            .from(tableName)
-            .select('teacher_id, descriptor'); // Select the ID and the descriptor JSONB column
-
-        if (error) {
-            console.error(`Error fetching ${userType} face descriptors:`, error);
-            return [];
-        }
-
-        if (!data || data.length === 0) {
-            console.warn(`No ${userType} face descriptors found in ${tableName}.`);
-            return [];
-        }
-
-        const descriptors = data.map(item => {
-            // Ensure the descriptor is a Float32Array
-            const descriptorArray = new Float32Array(item.descriptor);
-            // Use the teacher_id (UUID) as the label for recognition
-            return new faceapi.LabeledFaceDescriptors(item.teacher_id, [descriptorArray]);
-        });
-
-        labeledDescriptors = descriptors; // Store globally if needed elsewhere
-        console.log(`Loaded ${descriptors.length} labeled descriptors for ${userType}s.`);
-        return descriptors;
-
-    } catch (err) {
-        console.error(`Unexpected error in loadLabeledDescriptors for ${userType}:`, err);
-        return [];
-    }
-}
-
-
-
-// =============================================
-// FACE RECOGNITION MODULE
-// =============================================
-
-// Global variables
-
-// Main initialization function
-async function initFaceRecognition() {
-  try {
-    // Load models first
-    await loadModels();
-    
-    // Setup camera if models loaded successfully
-    if (modelsLoaded) {
-      await setupCamera();
-      isRecognitionActive = true;
-      detectFaces();
-      teacherFaceRecognitionFeedback.textContent = 'Face recognition started';
-    }
-  } catch (error) {
-    console.error('Initialization failed:', error);
-    teacherFaceRecognitionFeedback.textContent = 'Failed to initialize: ' + error.message;
-  }
-}
-
-// Load all required models
-async function loadModels() {
-  try {
-    console.log('Loading face recognition models...');
-    teacherFaceRecognitionFeedback.textContent = 'Loading models...';
-    
-   async function loadFaceApiModels() {
-    const MODEL_URL = './models';
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-    await faceapi.nets.tinyYolov2.loadFromUri(MODEL_URL);
-    console.log("✅ Face-api models loaded successfully");
-}
-
-    
-    modelsLoaded = true;
-    teacherFaceRecognitionFeedback.textContent = 'Models loaded successfully';
-    console.log('Models loaded: SSD MobilenetV1, FaceLandmark68, FaceRecognition');
-  } catch (error) {
-    console.error('Model loading error:', error);
-    teacherFaceRecognitionFeedback.textContent = 'Model loading failed';
-    throw error;
-  }
-}
-
-// Set up camera stream
-async function setupCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      video: { width: 640, height: 480 } 
-    });
-    videoElement.srcObject = stream;
-    return new Promise((resolve) => {
-      videoElement.onloadedmetadata = () => {
-        videoElement.play();
-        resolve();
-      };
-    });
-  } catch (error) {
-    console.error('Camera setup failed:', error);
-    throw new Error('Could not access camera: ' + error.message);
-  }
-}
-
-// Face detection loop
-async function detectFaces() {
-  if (!isRecognitionActive || !modelsLoaded) return;
-
-  try {
-    const detections = await faceapi.detectAllFaces(
-      videoElement,
-      new faceapi.SsdMobilenetv1Options()
-    )
-    .withFaceLandmarks()
-    .withFaceDescriptors();
-
-    if (detections.length > 0) {
-      // Process detections
-      const teacherId = await recognizeTeacher(detections[0].descriptor);
-      if (teacherId) {
-        await markTeacherAttendance(teacherId, 'face_recognition');
-      }
-    }
-
-    // Continue detection loop
-    requestAnimationFrame(detectFaces);
-  } catch (error) {
-    console.error('Detection error:', error);
-    teacherFaceRecognitionFeedback.textContent = 'Detection error occurred';
-  }
-}
-
-// Face matching function
-async function recognizeTeacher(descriptor) {
-  try {
-    const { data: teacherFaces } = await supabase
-      .from('teacher_faces')
-      .select('teacher_id, descriptor');
-    
-    if (!teacherFaces || teacherFaces.length === 0) {
-      return null;
-    }
-
-    const bestMatch = teacherFaces.reduce((match, face) => {
-      const distance = faceapi.euclideanDistance(
-        JSON.parse(face.descriptor),
-        descriptor
-      );
-      return distance < (match.distance || Infinity) ? 
-        { id: face.teacher_id, distance } : match;
-    }, {});
-
-    return bestMatch.distance < 0.6 ? bestMatch.id : null;
-  } catch (error) {
-    console.error('Recognition error:', error);
-    return null;
-  }
-}
-
-// Clean up function
-function stopFaceRecognition() {
-  isRecognitionActive = false;
-  if (videoElement.srcObject) {
-    videoElement.srcObject.getTracks().forEach(track => track.stop());
-    videoElement.srcObject = null;
-  }
-  teacherFaceRecognitionFeedback.textContent = 'Face recognition stopped';
-}
-
-// =============================================
-// EVENT LISTENERS
-// =============================================
-
-// Start when page loads
-document.addEventListener('DOMContentLoaded', () => {
-  // Optional: Auto-start recognition
-  // initFaceRecognition();
-  
-  // Or use button click
-  document.getElementById('startRecognition')?.addEventListener('click', initFaceRecognition);
-  document.getElementById('stopRecognition')?.addEventListener('click', stopFaceRecognition);
-});
-
-// Global variables for face-api.js
-const teacherFaceRecognitionVideo = document.getElementById('teacherFaceRecognitionVideo');
-const teacherFaceRecognitionCanvas = document.getElementById('teacherFaceRecognitionCanvas');
-let faceDetectionInterval = null; // To store the interval ID for face detection
-
-// =============================================
-// FACE RECOGNITION MODULE
-// =============================================
-
-// Global variables
-let isRecognitionActive = false;
-let modelsLoaded = false;
-const teacherFaceRecognitionFeedback = document.getElementById('faceRecognitionFeedback');
-const videoElement = document.getElementById('teacherFaceRecognitionVideo');
-
-// Main initialization function
-async function initFaceRecognition() {
-  try {
-    // Load models first
-    await loadModels();
-    
-    // Setup camera if models loaded successfully
-    if (modelsLoaded) {
-      await setupCamera();
-      isRecognitionActive = true;
-      detectFaces();
-      teacherFaceRecognitionFeedback.textContent = 'Face recognition started';
-    }
-  } catch (error) {
-    console.error('Initialization failed:', error);
-    teacherFaceRecognitionFeedback.textContent = 'Failed to initialize: ' + error.message;
-  }
-}
-
-// Load all required models
-async function loadModels() {
-  try {
-    console.log('Loading face recognition models...');
-    teacherFaceRecognitionFeedback.textContent = 'Loading models...';
-    
-    await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
-      faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-      faceapi.nets.faceRecognitionNet.loadFromUri('/models')
-    ]);
-    
-    modelsLoaded = true;
-    teacherFaceRecognitionFeedback.textContent = 'Models loaded successfully';
-    console.log('Models loaded: SSD MobilenetV1, FaceLandmark68, FaceRecognition');
-  } catch (error) {
-    console.error('Model loading error:', error);
-    teacherFaceRecognitionFeedback.textContent = 'Model loading failed';
-    throw error;
-  }
-}
-
-// Set up camera stream
-async function setupCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      video: { width: 640, height: 480 } 
-    });
-    videoElement.srcObject = stream;
-    return new Promise((resolve) => {
-      videoElement.onloadedmetadata = () => {
-        videoElement.play();
-        resolve();
-      };
-    });
-  } catch (error) {
-    console.error('Camera setup failed:', error);
-    throw new Error('Could not access camera: ' + error.message);
-  }
-}
-
-// Face detection loop
-async function detectFaces() {
-  if (!isRecognitionActive || !modelsLoaded) return;
-
-  try {
-    const detections = await faceapi.detectAllFaces(
-      videoElement,
-      new faceapi.SsdMobilenetv1Options()
-    )
-    .withFaceLandmarks()
-    .withFaceDescriptors();
-
-    if (detections.length > 0) {
-      // Process detections
-      const teacherId = await recognizeTeacher(detections[0].descriptor);
-      if (teacherId) {
-        await markTeacherAttendance(teacherId, 'face_recognition');
-      }
-    }
-
-    // Continue detection loop
-    requestAnimationFrame(detectFaces);
-  } catch (error) {
-    console.error('Detection error:', error);
-    teacherFaceRecognitionFeedback.textContent = 'Detection error occurred';
-  }
-}
-
-// Face matching function
-async function recognizeTeacher(descriptor) {
-  try {
-    const { data: teacherFaces } = await supabase
-      .from('teacher_faces')
-      .select('teacher_id, descriptor');
-    
-    if (!teacherFaces || teacherFaces.length === 0) {
-      return null;
-    }
-
-    const bestMatch = teacherFaces.reduce((match, face) => {
-      const distance = faceapi.euclideanDistance(
-        JSON.parse(face.descriptor),
-        descriptor
-      );
-      return distance < (match.distance || Infinity) ? 
-        { id: face.teacher_id, distance } : match;
-    }, {});
-
-    return bestMatch.distance < 0.6 ? bestMatch.id : null;
-  } catch (error) {
-    console.error('Recognition error:', error);
-    return null;
-  }
-}
-
-// Clean up function
-function stopFaceRecognition() {
-  isRecognitionActive = false;
-  if (videoElement.srcObject) {
-    videoElement.srcObject.getTracks().forEach(track => track.stop());
-    videoElement.srcObject = null;
-  }
-  teacherFaceRecognitionFeedback.textContent = 'Face recognition stopped';
-}
-
-// =============================================
-// EVENT LISTENERS
-// =============================================
-
-// Start when page loads
-document.addEventListener('DOMContentLoaded', () => {
-  // Optional: Auto-start recognition
-  // initFaceRecognition();
-  
-  // Or use button click
-  document.getElementById('startRecognition')?.addEventListener('click', initFaceRecognition);
-  document.getElementById('stopRecognition')?.addEventListener('click', stopFaceRecognition);
-});
-
-async function startTeacherFaceRecognition() {
-    if (!teacherFaceRecognitionVideo || !teacherFaceRecognitionCanvas || !teacherFaceRecognitionFeedback) {
-        console.error('Face recognition elements not found.');
-        teacherFaceRecognitionFeedback.textContent = 'Face recognition elements not found.';
-        return;
-    }
-
-    teacherFaceRecognitionFeedback.textContent = 'Checking models...';
-    console.log('Starting face recognition...');
-    try {
-        await loadFaceApiModels();
-    } catch (err) {
-        teacherFaceRecognitionFeedback.textContent = 'Models failed to load. Cannot start.';
-        console.error('Model loading failed:', err);
-        return;
-    }
-
-    teacherFaceRecognitionFeedback.textContent = 'Starting camera...';
-    try {
-        if (teacherFaceRecognitionStream) {
-            teacherFaceRecognitionStream.getTracks().forEach(track => track.stop());
-        }
-
-        teacherFaceRecognitionStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        teacherFaceRecognitionVideo.srcObject = teacherFaceRecognitionStream;
-        console.log('Camera stream initialized.');
-
-        teacherFaceRecognitionVideo.addEventListener('play', () => {
-            if (teacherFaceRecognitionVideo.videoWidth === 0 || teacherFaceRecognitionVideo.videoHeight === 0) {
-                teacherFaceRecognitionFeedback.textContent = 'Video not ready. Waiting for camera...';
-                console.warn('Video dimensions not ready:', teacherFaceRecognitionVideo.videoWidth, teacherFaceRecognitionVideo.videoHeight);
-                return;
-            }
-            teacherFaceRecognitionFeedback.textContent = 'Camera started. Detecting faces...';
-            console.log('Video playing, starting detection. Dimensions:', teacherFaceRecognitionVideo.videoWidth, 'x', teacherFaceRecognitionVideo.videoHeight);
-            const displaySize = { width: teacherFaceRecognitionVideo.videoWidth, height: teacherFaceRecognitionVideo.videoHeight };
-            faceapi.matchDimensions(teacherFaceRecognitionCanvas, displaySize);
-
-            if (faceDetectionInterval) {
-                clearInterval(faceDetectionInterval);
-            }
-
-            faceDetectionInterval = setInterval(async () => {
-                try {
-                    const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 });
-                    const detections = await faceapi.detectAllFaces(teacherFaceRecognitionVideo, options).withFaceLandmarks();
-                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
-                    teacherFaceRecognitionCanvas.getContext('2d').clearRect(0, 0, teacherFaceRecognitionCanvas.width, teacherFaceRecognitionCanvas.height);
-                    faceapi.draw.drawDetections(teacherFaceRecognitionCanvas, resizedDetections);
-                    faceapi.draw.drawFaceLandmarks(teacherFaceRecognitionCanvas, resizedDetections);
-
-                    if (detections.length > 0) {
-                        teacherFaceRecognitionFeedback.textContent = `Face detected! (${detections.length} face(s))`;
-                        console.log('Faces detected:', detections);
-                    } else {
-                        teacherFaceRecognitionFeedback.textContent = 'No face detected. Ensure good lighting, center your face, and position closer to the camera.';
-                        console.log('No faces detected in frame.');
-                    }
-                } catch (error) {
-                    console.error('Error during face detection:', error);
-                    teacherFaceRecognitionFeedback.textContent = 'Error during detection. Check console.';
-                }
-            }, 100);
-        });
-
-    } catch (err) {
-        console.error('Error accessing camera:', err.name, err.message);
-        let errorMessage = 'Error accessing camera. Please ensure camera is available.';
-        if (err.name === 'NotAllowedError') {
-            errorMessage = 'Camera access denied. Please grant camera permissions in your browser settings.';
-        } else if (err.name === 'NotFoundError') {
-            errorMessage = 'No camera found. Please connect a webcam and try again.';
-        }
-        teacherFaceRecognitionFeedback.textContent = errorMessage;
-        alert(errorMessage);
-    }
-}
-async function stopTeacherFaceRecognition() {
-    if (teacherFaceRecognitionStream) {
-        teacherFaceRecognitionStream.getTracks().forEach(track => track.stop());
-        teacherFaceRecognitionStream = null;
-    }
-    if (faceDetectionInterval) {
-        clearInterval(faceDetectionInterval);
-        faceDetectionInterval = null;
-    }
-    if (teacherFacePlayHandlerRef) {
-        teacherFaceRecognitionVideo.removeEventListener('play', teacherFacePlayHandlerRef);
-        teacherFacePlayHandlerRef = null;
-    }
-    console.log("🛑 Teacher face recognition stopped");
-}
-
-// ========================
-// Init on page load
-// ========================
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadFaceApiModels();
-    // Optionally auto-start
-    // await startTeacherFaceRecognition();
-});
-
-function toggleStudentFaceRecognitionSection() {
-    const section = document.getElementById('studentFaceRecognitionSection');
-    if (section.classList.contains('hidden')) {
-        section.classList.remove('hidden');
-    } else {
-        section.classList.add('hidden');
-    }
-}
-
-function toggleStudentFaceRegistrationSection() {
-    const section = document.getElementById('studentFaceRegistrationSection');
-    if (section.classList.contains('hidden')) {
-        section.classList.remove('hidden');
-    } else {
-        section.classList.add('hidden');
-    }
-}
-function toggleTeacherFaceRegistrationSection() {
-    const section = document.getElementById('teacherFaceRegistrationSection');
-    if (section.classList.contains('hidden')) {
-        section.classList.remove('hidden');
-        section.style.display = 'block';
-    } else {
-        section.classList.add('hidden');
-        section.style.display = 'none';
-        stopTeacherFaceRegistration(); // Stop camera when hiding
-    }
-}
-function toggleTeacherFaceRecognitionSection() {
-  const section = document.getElementById("teacherFaceRecognitionSection");
-  if (!section) {
-    console.warn("Teacher Face Recognition section not found!");
-    return;
-  }
-
-  // Toggle hidden/display
-  if (section.style.display === "none" || section.classList.contains("hidden")) {
-    section.style.display = "block";
-    section.classList.remove("hidden");
-  } else {
-    section.style.display = "none";
-    section.classList.add("hidden");
-  }
-}
-
-
 
 // Global variable for QR Scanner instances
 let html5QrCodeScanner = null;
@@ -543,7 +42,30 @@ function checkHtml5QrCodeAvailability() {
     return true;
 }
 
-
+/**
+ * Loads all necessary face-api.js models.
+ */
+async function loadFaceDetectionModels() {
+    if (faceDetectionModelsLoaded) {
+        console.log('Face detection models already loaded.');
+        return true;
+    }
+    console.log('Loading face detection models...');
+    try {
+        await faceapi.nets.ssdMobilenetv1.load(FACE_MODELS_PATH);
+        await faceapi.nets.faceLandmark68Net.load(FACE_MODELS_PATH);
+        await faceapi.nets.faceRecognitionNet.load(FACE_MODELS_PATH);
+        // Optionally load tinyFaceDetector for faster but less accurate detection
+        // await faceapi.nets.tinyFaceDetector.load(FACE_MODELS_PATH);
+        faceDetectionModelsLoaded = true;
+        console.log('Face detection models loaded successfully.');
+        return true;
+    } catch (error) {
+        console.error('Error loading face detection models:', error);
+        alert('Failed to load face detection models. Please check console for details.');
+        return false;
+    }
+}
 // --- IMPORTANT RLS NOTE ---
 // If you are still getting 403 errors after this, ensure your Row Level Security (RLS) policies
 // in Supabase are configured to allow 'SELECT', 'INSERT', 'UPDATE', 'DELETE' for the 'authenticated'
@@ -869,14 +391,16 @@ function initTypedWelcome() {
 
 // --- Data Fetching Functions (from Supabase) ---
 
+// Example modification for fetchStudents (similar for teachers)
 async function fetchStudents() {
     console.log('Fetching students...');
     try {
-        // Fetch students from the 'students' table
         const { data, error } = await supabase.from('students').select('*');
         if (error) throw error;
         students = data;
         console.log('Students fetched successfully:', students.length);
+        // After fetching students, prepare labeled face descriptors
+        await prepareLabeledFaceDescriptors();
     } catch (error) {
         console.error('Error fetching students:', error);
         students = [];
@@ -886,525 +410,66 @@ async function fetchStudents() {
     }
 }
 
-async function fetchTeachers() {
-    console.log('Fetching teachers...');
-    try {
-        const { data, error } = await supabase.from('teachers').select('*');
-        if (error) throw error;
-        teachers = data;
-        console.log('Teachers fetched successfully:', teachers.length);
-    } catch (error) {
-        console.error('Error fetching teachers:', error);
-        teachers = [];
-    } finally {
-        renderTeacherTable();
-        updateDashboardStats();
-    }
-}
-// Existing attendance functions...
-
-// --- Face Recognition Attendance Functionality ---
-
-// Function to initialize face recognition
-async function initFaceRecognition() {
-    const videoElement = document.getElementById('teacherFaceRecognitionVideo');
-    const feedbackElement = document.getElementById('teacherFaceRecognitionFeedback');
-
-    // Validate required elements exist
-    if (!videoElement || !feedbackElement) {
-        console.error('Required elements not found for face recognition');
-        return false;
-    }
-
-    try {
-        feedbackElement.textContent = 'Loading face recognition models...';
-        
-        // Load face-api.js models
-        await loadFaceApiModels();
-        feedbackElement.textContent = 'Models loaded. Starting camera...';
-
-        // Request camera access (corrected method name)
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: true,
-            audio: false  // Explicitly disable audio as we don't need it
-        });
-
-        // Set video source and handle playback
-        videoElement.srcObject = stream;
-        await videoElement.play();
-
-        // Start face detection when video is playing
-        videoElement.onplaying = () => {
-            feedbackElement.textContent = 'Camera ready. Detecting faces...';
-            detectionInterval = setInterval(detectFaces, 1000); // Save interval ID for cleanup
-        };
-
-        return true;
-        
-    } catch (error) {
-        console.error('Face recognition initialization failed:', error);
-        feedbackElement.textContent = `Error: ${error.message}. Please ensure camera permissions are granted.`;
-        
-        // Clean up if video was partially initialized
-        if (videoElement.srcObject) {
-            videoElement.srcObject.getTracks().forEach(track => track.stop());
-            videoElement.srcObject = null;
-        }
-        
-        return false;
-    }
-}
-
-// Function to detect faces and recognize teachers
-async function detectFaces() {
-    const videoElement = document.getElementById('teacherFaceRecognitionVideo');
-    const feedbackElement = document.getElementById('teacherFaceRecognitionFeedback');
-
-    const detections = await faceapi.detectAllFaces(videoElement, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptors();
-
-    if (detections.length > 0) {
-        feedbackElement.textContent = 'Face detected! Attempting to recognize...';
-        const descriptors = detections.map(d => d.descriptor);
-        
-        // Here you would compare the descriptors with stored teacher descriptors
-        const recognizedTeacher = await recognizeTeacher(descriptors[0]); // Assuming single face detection for simplicity
-
-        if (recognizedTeacher) {
-            await markTeacherAttendance(recognizedTeacher.id, 'Face Recognition');
-        } else {
-            feedbackElement.textContent = 'Recognized face but no matching teacher found.';
-        }
-    } else {
-        feedbackElement.textContent = 'No face detected. Please position your face in frame.';
-    }
-}
-
-
-
-// Function to get the teacher ID based on the string ID
-// Function to get the teacher ID based on the string ID
-
-
-
-// Function to mark attendance for recognized teacher
-// Modify markTeacherAttendance
-async function markTeacherAttendance(teacherUuid, method) { // Renamed parameter for clarity
-    const today = new Date().toISOString().split('T')[0];
-    const currentTime = new Date().toTimeString().split(' ')[0];
-    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-    const userEmail = loggedInUser?.email || 'Face Recognition System'; // Changed default for clarity
-
-    try {
-        // Fetch existing attendance records for the teacher on the current date
-        const { data: existingRecords, error } = await supabase
-            .from('teacher_attendance')
-            .select('*')
-            .eq('teacher_id', teacherUuid) // Use the UUID directly
-            .eq('date', today);
-
-        if (error) {
-            console.error('Error fetching attendance:', error);
-            await addAuditLog(userEmail, 'Error Fetching Attendance', 'Teacher Attendance', `Error fetching attendance for teacher UUID: ${teacherUuid}: ${error.message}`);
-            return;
-        }
-
-        if (existingRecords && existingRecords.length > 0) {
-            const existingRecord = existingRecords[0];
-            if (existingRecord.arrival_time) {
-                console.log(`Arrival already marked for teacher UUID: ${teacherUuid}`);
-                teacherFaceRecognitionFeedback.textContent = `Arrival already marked for ${teacherUuid}.`;
-                await addAuditLog(userEmail, 'Face Recognition Duplicate Arrival', 'Teacher Attendance', `Duplicate recognition for teacher UUID: ${teacherUuid}`);
-            } else {
-                // Update the existing record with arrival time
-                const { error: updateError } = await supabase
-                    .from('teacher_attendance')
-                    .update({ arrival_time: currentTime, status: 'Present' })
-                    .eq('id', existingRecord.id); // Update by the attendance record's ID
-
-                if (updateError) {
-                    console.error('Error updating attendance:', updateError);
-                    throw updateError;
-                }
-
-                console.log(`Arrival marked for teacher UUID: ${teacherUuid}`);
-                teacherFaceRecognitionFeedback.textContent = `Arrival marked for ${teacherUuid}.`;
-                await addAuditLog(userEmail, 'Face Recognition Attendance Marked', 'Teacher Attendance', `Marked Arrival for teacher UUID: ${teacherUuid} via Face Recognition`);
-            }
-        } else {
-            // Create a new attendance record if none exists
-            const { error: insertError } = await supabase
-                .from('teacher_attendance')
-                .insert([{
-                    teacher_id: teacherUuid, // Use the UUID directly
-                    date: today,
-                    status: 'Present',
-                    arrival_time: currentTime,
-                    remarks: method
-                }]);
-
-            if (insertError) {
-                console.error('Error inserting attendance:', insertError);
-                throw insertError;
-            }
-
-            console.log(`Attendance marked for teacher UUID: ${teacherUuid}`);
-            teacherFaceRecognitionFeedback.textContent = `Attendance marked for ${teacherUuid}.`;
-            await addAuditLog(userEmail, 'Face Recognition Attendance Marked', 'Teacher Attendance', `Marked Arrival for teacher UUID: ${teacherUuid} via Face Recognition`);
-        }
-    } catch (error) {
-        console.error('Error marking attendance:', error);
-        teacherFaceRecognitionFeedback.textContent = `Error marking attendance: ${error.message}`;
-        await addAuditLog(userEmail, 'Face Recognition Attendance Failed', 'Teacher Attendance', `Error marking attendance for teacher UUID: ${teacherUuid}: ${error.message}`);
-    }
-}
-
-
-// Function to stop face recognition
-function stopFaceRecognition() {
-    const videoElement = document.getElementById('teacherFaceRecognitionVideo');
-    if (videoElement && videoElement.srcObject) {
-        videoElement.srcObject.getTracks().forEach(track => track.stop());
-        videoElement.srcObject = null;
-    }
-    console.log('Face recognition stopped.');
-}
-
-// Event listener to start face recognition when the page loads or when the module is accessed
-document.addEventListener('DOMContentLoaded', async () => {
-    await initFaceRecognition(); // Initialize face recognition on page load
-});
-
-// Existing attendance functions continue...
-
-// --- Student Face Recognition ---
-let studentFaceRecognitionStream = null;
-const studentFaceRecognitionVideo = document.getElementById('studentFaceRecognitionVideo');
-const studentFaceRecognitionCanvas = document.getElementById('studentFaceRecognitionCanvas');
-const studentFaceRecognitionFeedback = document.getElementById('studentFaceRecognitionFeedback');
-let studentFaceDetectionInterval = null;
-
-async function startStudentFaceRecognition() {
-    studentFaceRecognitionFeedback.textContent = 'Starting camera...';
-    try {
-        if (studentFaceRecognitionStream) {
-            studentFaceRecognitionStream.getTracks().forEach(track => track.stop());
-        }
-        studentFaceRecognitionStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        studentFaceRecognitionVideo.srcObject = studentFaceRecognitionStream;
-
-        studentFaceRecognitionVideo.addEventListener('play', () => {
-            studentFaceRecognitionFeedback.textContent = 'Detecting faces...';
-            const displaySize = { width: studentFaceRecognitionVideo.width, height: studentFaceRecognitionVideo.height };
-            faceapi.matchDimensions(studentFaceRecognitionCanvas, displaySize);
-
-            if (studentFaceDetectionInterval) clearInterval(studentFaceDetectionInterval);
-
-            studentFaceDetectionInterval = setInterval(async () => {
-                const detections = await faceapi
-                    .detectAllFaces(studentFaceRecognitionVideo, new faceapi.TinyFaceDetectorOptions())
-                    .withFaceLandmarks();
-
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                studentFaceRecognitionCanvas.getContext('2d').clearRect(0, 0, studentFaceRecognitionCanvas.width, studentFaceRecognitionCanvas.height);
-                faceapi.draw.drawDetections(studentFaceRecognitionCanvas, resizedDetections);
-                faceapi.draw.drawFaceLandmarks(studentFaceRecognitionCanvas, resizedDetections);
-
-                if (detections.length > 0) {
-                    studentFaceRecognitionFeedback.textContent = `Face detected (${detections.length})`;
-                    // Simulated match
-                    await markStudentAttendance('student1', 'Face Recognition');
-                } else {
-                    studentFaceRecognitionFeedback.textContent = 'No face detected';
-                }
-            }, 1000);
-        });
-    } catch (err) {
-        console.error('Error starting student face recognition:', err);
-        studentFaceRecognitionFeedback.textContent = 'Camera error';
-    }
-}
-
-async function stopStudentFaceRecognition() {
-    if (studentFaceDetectionInterval) {
-        clearInterval(studentFaceDetectionInterval);
-        studentFaceDetectionInterval = null;
-    }
-    if (studentFaceRecognitionStream) {
-        studentFaceRecognitionStream.getTracks().forEach(track => track.stop());
-        studentFaceRecognitionStream = null;
-    }
-    studentFaceRecognitionVideo.srcObject = null;
-    studentFaceRecognitionCanvas.getContext('2d').clearRect(0, 0, studentFaceRecognitionCanvas.width, studentFaceRecognitionCanvas.height);
-    studentFaceRecognitionFeedback.textContent = 'Stopped';
-}
-
-async function markStudentAttendance(studentId, method) {
-    const today = new Date().toISOString().split('T')[0];
-    const currentTime = new Date().toTimeString().split(' ')[0];
-
-    try {
-        // Step 1: Get real UUID from students table
-        const { data: student, error: studentFetchError } = await supabase
-            .from('students')
-            .select('id')
-            .eq('custom_id', studentId) // your "student1" stored here
-            .single();
-
-        if (studentFetchError || !student) {
-            console.error('Student not found:', studentFetchError);
-            return;
-        }
-
-        // Step 2: Check if attendance already exists for today
-        const { data: existingRecords, error: checkError } = await supabase
-            .from('attendance')
-            .select('*')
-            .eq('student_id', student.id) // ✅ now using UUID
-            .eq('attendance_date', today);
-
-        if (checkError) {
-            console.error('Error checking attendance:', checkError);
-            return;
-        }
-
-        if (existingRecords && existingRecords.length > 0) {
-            console.log('Already marked');
-        } else {
-            // Step 3: Insert attendance
-            const { error: insertError } = await supabase
-                .from('attendance')
-                .insert([{
-                    student_id: student.id, // real UUID
-                    attendance_date: today,
-                    status: 'Present',
-                    arrival_time: currentTime,
-                    remarks: method
-                }]);
-
-            if (insertError) {
-                console.error('Error inserting attendance:', insertError);
-            } else {
-                console.log('Student attendance marked');
-            }
-        }
-    } catch (err) {
-        console.error('Unexpected error marking student attendance:', err);
-    }
-}
-
-let studentFaceRegStream = null;
-const studentFaceRegVideo = document.getElementById('studentFaceRegVideo');
-const studentFaceRegCanvas = document.getElementById('studentFaceRegCanvas');
-const studentFaceRegFeedback = document.getElementById('studentFaceRegFeedback');
-
-async function startStudentFaceRegistration() {
-    const studentId = document.getElementById('studentFaceRegId').value.trim();
-    if (!studentId) {
-        studentFaceRegFeedback.textContent = "Enter Student ID first";
+/**
+ * Prepares LabeledFaceDescriptors from stored student/teacher data.
+ * This assumes you have a 'face_descriptor' column (TEXT or JSONB) in your student/teacher tables.
+ * You would need a separate process to generate and store these descriptors initially.
+ */
+async function prepareLabeledFaceDescriptors() {
+    if (!faceDetectionModelsLoaded) {
+        console.warn('Face detection models not loaded yet. Cannot prepare face descriptors.');
         return;
     }
+    labeledFaceDescriptors = [];
+    console.log('Preparing labeled face descriptors...');
 
-    try {
-        studentFaceRegStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        studentFaceRegVideo.srcObject = studentFaceRegStream;
-
-        studentFaceRegVideo.addEventListener('play', async () => {
-            studentFaceRegFeedback.textContent = "Detecting face...";
-
-            const detections = await faceapi
-                .detectSingleFace(studentFaceRegVideo, new faceapi.TinyFaceDetectorOptions())
-                .withFaceLandmarks()
-                .withFaceDescriptor();
-
-            if (detections) {
-                const ctx = studentFaceRegCanvas.getContext('2d');
-
-                // Draw video frame into canvas
-                ctx.drawImage(studentFaceRegVideo, 0, 0, studentFaceRegCanvas.width, studentFaceRegCanvas.height);
-
-                // Convert to Blob and upload to Supabase
-                studentFaceRegCanvas.toBlob(async (blob) => {
-                    if (!blob) {
-                        console.error("Canvas is empty, blob is null");
-                        studentFaceRegFeedback.textContent = "Capture failed, try again.";
-                        return;
-                    }
-
-                    const fileName = `${studentId}.png`;
-                    const { data, error } = await supabase.storage
-                        .from('student-faces')
-                        .upload(fileName, blob, { upsert: true });
-
-                    if (!error) {
-                        const { data: publicData } = supabase
-                            .storage
-                            .from('student-faces')
-                            .getPublicUrl(fileName);
-
-                        await supabase.from('student_faces').insert([{
-                            student_id: studentId,
-                            face_url: publicData.publicUrl
-                        }]);
-
-                        studentFaceRegFeedback.textContent = "Face registered successfully!";
-                    } else {
-                        console.error(error);
-                        studentFaceRegFeedback.textContent = "Upload failed.";
-                    }
-                }, "image/png");
-            } else {
-                studentFaceRegFeedback.textContent = "No face detected. Try again.";
-            }
-        }, { once: true });
-
-    } catch (err) {
-        console.error(err);
-        studentFaceRegFeedback.textContent = "Camera error";
-    }
-}
-
-function stopStudentFaceRegistration() {
-    if (studentFaceRegStream) {
-        studentFaceRegStream.getTracks().forEach(track => track.stop());
-        studentFaceRegStream = null;
-    }
-    studentFaceRegVideo.srcObject = null;
-}
-
-async function startTeacherFaceRegistration() {
-    const teacherId = document.getElementById('teacherFaceRegId').value.trim();
-    if (!teacherId) {
-        teacherFaceRegFeedback.textContent = "Enter Teacher ID first";
-        return;
-    }
-
-    teacherFaceRegFeedback.textContent = 'Starting camera...';
-    try {
-        // Stop any existing stream
-        if (teacherFaceRegStream) {
-            teacherFaceRegStream.getTracks().forEach(track => track.stop());
-        }
-
-        // Start the camera
-        teacherFaceRegStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        teacherFaceRegVideo.srcObject = teacherFaceRegStream;
-
-        // Wait for the video to start playing
-        teacherFaceRegVideo.addEventListener('play', async () => {
-            teacherFaceRegFeedback.textContent = "Detecting face...";
-
-            // Wait a moment to ensure the frame is ready
-            await new Promise(resolve => setTimeout(resolve, 500));
-
+    // Example for students (you'd do similar for teachers if needed)
+    for (const student of students) {
+        if (student.face_descriptor) {
             try {
-                const detections = await faceapi
-                    .detectSingleFace(teacherFaceRegVideo, new faceapi.TinyFaceDetectorOptions())
-                    .withFaceLandmarks()
-                    .withFaceDescriptor();
-
-                if (detections && detections.descriptor) {
-                    // Convert descriptor to array
-                    const descriptorArray = Array.from(detections.descriptor);
-
-                    // Save descriptor directly into Supabase table
-                    const { data: descriptorData, error: descriptorError } = await supabase
-                        .from('teacher_face_descriptors')
-                        .insert([{
-                            teacher_id: teacherId, // must match DB type
-                            descriptor: descriptorArray
-                        }]);
-
-                    if (descriptorError) {
-                        console.error("Error saving face descriptor:", descriptorError);
-                        teacherFaceRegFeedback.textContent = "Error saving face descriptor.";
-                        return;
-                    } else {
-                        console.log("Face descriptor saved successfully:", descriptorData);
-                    }
-
-                    // 🖼 Capture image from video
-                    const ctx = teacherFaceRegCanvas.getContext('2d');
-                    teacherFaceRegCanvas.width = teacherFaceRegVideo.videoWidth;
-                    teacherFaceRegCanvas.height = teacherFaceRegVideo.videoHeight;
-                    ctx.drawImage(teacherFaceRegVideo, 0, 0, teacherFaceRegCanvas.width, teacherFaceRegCanvas.height);
-
-                    teacherFaceRegCanvas.toBlob(async (blob) => {
-                        if (!blob) {
-                            console.error("Canvas is empty, blob is null");
-                            teacherFaceRegFeedback.textContent = "Capture failed, try again.";
-                            return;
-                        }
-
-                        const fileName = `${teacherId}.png`;
-                        const { error: uploadError } = await supabase.storage
-                            .from('teacher_faces')
-                            .upload(fileName, blob, { upsert: true });
-
-                        if (uploadError) {
-                            console.error("Error uploading face image:", uploadError);
-                            teacherFaceRegFeedback.textContent = "Upload failed.";
-                            return;
-                        }
-
-                        // Get public URL for the uploaded image
-                        const { data: publicData } = supabase
-                            .storage
-                            .from('teacher_faces')
-                            .getPublicUrl(fileName);
-
-                        // Insert record into teacher_faces table
-                        const { error: dbError } = await supabase.from('teacher_faces').insert([{
-                            teacher_id: teacherId,
-                            face_url: publicData.publicUrl
-                        }]);
-
-                        if (dbError) {
-                            console.error("Error saving face data to database:", dbError);
-                            teacherFaceRegFeedback.textContent = "Error saving face data to database.";
-                        } else {
-                            teacherFaceRegFeedback.textContent = "Face registered successfully!";
-                            console.log(`Teacher face for ID ${teacherId} registered and uploaded.`);
-                        }
-                    }, "image/png");
-
-                } else {
-                    teacherFaceRegFeedback.textContent = "No face detected. Please ensure your face is clearly visible.";
+                const descriptorArray = JSON.parse(student.face_descriptor);
+                if (Array.isArray(descriptorArray) && descriptorArray.length > 0) {
+                    const float32Array = new Float32Array(descriptorArray);
+                    labeledFaceDescriptors.push(
+                        new faceapi.LabeledFaceDescriptors(
+                            student.id.toString(), // Use student ID as label
+                            [float32Array]
+                        )
+                    );
                 }
-
-            } catch (err) {
-                console.error("Error detecting/saving face:", err);
-                teacherFaceRegFeedback.textContent = "Face detection or saving error.";
+            } catch (e) {
+                console.error(`Error parsing face descriptor for student ${student.id}:`, e);
             }
-        }, { once: true });
+        }
+    }
 
-    } catch (err) {
-        console.error("Error starting teacher face registration:", err);
-        teacherFaceRegFeedback.textContent = `Camera error: ${err.message}. Please ensure camera permissions are granted.`;
+    // Example for teachers
+    for (const teacher of teachers) {
+        if (teacher.face_descriptor) {
+            try {
+                const descriptorArray = JSON.parse(teacher.face_descriptor);
+                if (Array.isArray(descriptorArray) && descriptorArray.length > 0) {
+                    const float32Array = new Float32Array(descriptorArray);
+                    labeledFaceDescriptors.push(
+                        new faceapi.LabeledFaceDescriptors(
+                            `teacher_${teacher.id}`, // Use a distinct label for teachers
+                            [float32Array]
+                        )
+                    );
+                }
+            } catch (e) {
+                console.error(`Error parsing face descriptor for teacher ${teacher.id}:`, e);
+            }
+        }
+    }
+
+    if (labeledFaceDescriptors.length > 0) {
+        faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6); // 0.6 is a common distance threshold
+        console.log(`Prepared ${labeledFaceDescriptors.length} labeled face descriptors.`);
+    } else {
+        console.warn('No face descriptors found in the database. Face recognition will not work.');
     }
 }
-
-
-
-function stopTeacherFaceRegistration() {
-    if (teacherFaceRegStream) {
-        teacherFaceRegStream.getTracks().forEach(track => track.stop());
-        teacherFaceRegStream = null;
-    }
-    if (teacherFaceRegVideo) {
-        teacherFaceRegVideo.srcObject = null;
-    }
-    if (teacherFaceRegCanvas) {
-        const ctx = teacherFaceRegCanvas.getContext('2d');
-        ctx.clearRect(0, 0, teacherFaceRegCanvas.width, teacherFaceRegCanvas.height);
-    }
-    if (teacherFaceRegFeedback) {
-        teacherFaceRegFeedback.textContent = 'Registration stopped.';
-    }
-    console.log('Teacher face registration stopped.');
-}
-
 
 async function fetchPayrollEntries() {
     console.log('Fetching payroll entries...');
@@ -1942,11 +1007,6 @@ const reportStartDateInput = document.getElementById('reportStartDate');
 const reportEndDateInput = document.getElementById('reportEndDate');
 const reportDisplayArea = document.getElementById('reportDisplayArea');
 
-// New elements for QR scan feedback
-const qrScanFeedback = document.getElementById('qrScanFeedback');
-const qrScanFeedbackTeacher = document.getElementById('qrScanFeedbackTeacher');
-const teacherQrScannerTitle = document.getElementById('teacherQrScannerTitle'); // Added for teacher QR scanner title
-
 
 // --- Initial UI State Management ---
 
@@ -2089,26 +1149,48 @@ document.addEventListener('DOMContentLoaded', () => {
     // This ensures a clean login flow.
     showLoginUi();
 
-    // If you want to automatically log in if a session exists on refresh,
-    // uncomment the block below. However, the current setup requires manual login
-    // after a refresh for security and clarity.
-    /*
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-        if (session) {
-            console.log("DOMContentLoaded: Existing session found. Attempting to show school site UI.");
-            localStorage.setItem('loggedIn', 'true');
-            localStorage.setItem('loggedInUser', JSON.stringify(session.user));
-            showSchoolSiteUi();
-        } else {
-            console.log("DOMContentLoaded: No existing session. Showing login UI.");
-            localStorage.removeItem('loggedIn');
-            localStorage.removeItem('loggedInUser');
-            showLoginUi();
-        }
+    // Load face models as soon as possible, but don't block UI
+    loadFaceDetectionModels().then(() => {
+        console.log('Face models pre-loaded in background.');
+    }).catch(err => {
+        console.error('Failed to pre-load face models:', err);
     });
-    */
+
+    // ... rest of your DOMContentLoaded logic here if any
 });
 
+/**
+ * Shows the main school site UI after login.
+ */
+async function showSchoolSiteUi() {
+    // ... your existing code to setup UI, fetch data, etc.
+
+    // Ensure face-api.js models are loaded before preparing face descriptors
+    await loadFaceDetectionModels();
+
+    // Prepare labeled face descriptors after students and teachers are fetched
+    await prepareLabeledFaceDescriptors();
+
+    // ... rest of your showSchoolSiteUi logic
+}
+
+/*
+ // Optional: Automatically log in if a session exists on refresh.
+ // Uncomment this block if you want to enable auto-login on page reload.
+supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (session) {
+        console.log("DOMContentLoaded: Existing session found. Attempting to show school site UI.");
+        localStorage.setItem('loggedIn', 'true');
+        localStorage.setItem('loggedInUser ', JSON.stringify(session.user));
+        showSchoolSiteUi();
+    } else {
+        console.log("DOMContentLoaded: No existing session. Showing login UI.");
+        localStorage.removeItem('loggedIn');
+        localStorage.removeItem('loggedInUser ');
+        showLoginUi();
+    }
+});
+*/
 // --- Login UI Logic ---
 
 roleButtons.forEach(button => {
@@ -2621,6 +1703,184 @@ window.showModule = async function(moduleName) {
         await stopTeacherQrAttendance();
     }
 
+
+// UI Elements for Face Attendance
+const startFaceAttendanceBtn = document.getElementById('startFaceAttendanceBtn');
+const stopFaceAttendanceBtn = document.getElementById('stopFaceAttendanceBtn');
+const faceAttendanceSection = document.getElementById('faceAttendanceSection');
+const faceAttendanceVideo = document.getElementById('faceAttendanceVideo');
+const faceAttendanceCanvas = document.getElementById('faceAttendanceCanvas');
+const faceAttendanceStatus = document.getElementById('faceAttendanceStatus');
+
+if (startFaceAttendanceBtn) {
+    startFaceAttendanceBtn.addEventListener('click', startFaceAttendance);
+}
+if (stopFaceAttendanceBtn) {
+    stopFaceAttendanceBtn.addEventListener('click', stopFaceAttendance);
+}
+
+async function startFaceAttendance() {
+    console.log('Starting face attendance...');
+    if (!faceDetectionModelsLoaded) {
+        const loaded = await loadFaceDetectionModels();
+        if (!loaded) {
+            alert('Face detection models could not be loaded. Cannot start face attendance.');
+            return;
+        }
+    }
+    if (!faceMatcher) {
+        await prepareLabeledFaceDescriptors();
+        if (!faceMatcher) {
+            alert('No face descriptors available. Please enroll students/teachers first.');
+            return;
+        }
+    }
+
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        faceAttendanceVideo.srcObject = videoStream;
+        faceAttendanceSection.classList.remove('hidden');
+        startFaceAttendanceBtn.classList.add('hidden');
+        stopFaceAttendanceBtn.classList.remove('hidden');
+        faceAttendanceStatus.textContent = 'Initializing...';
+
+        faceAttendanceVideo.addEventListener('play', () => {
+            const displaySize = { width: faceAttendanceVideo.width, height: faceAttendanceVideo.height };
+            faceapi.matchDimensions(faceAttendanceCanvas, displaySize);
+
+            faceAttendanceInterval = setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(faceAttendanceVideo, new faceapi.SsdMobilenetv1Options())
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
+
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                faceAttendanceCanvas.getContext('2d').clearRect(0, 0, faceAttendanceCanvas.width, faceAttendanceCanvas.height);
+
+                let recognizedCount = 0;
+                for (const detection of resizedDetections) {
+                    const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                    const box = detection.detection.box;
+                    const drawBox = new faceapi.draw.DrawBox(box, { label: bestMatch.toString() });
+                    drawBox.draw(faceAttendanceCanvas);
+
+                    if (bestMatch.label !== 'unknown') {
+                        recognizedCount++;
+                        const [type, id] = bestMatch.label.split('_'); // Assuming labels like "student_ID" or "teacher_ID"
+                        const personId = type === 'student' ? id : (type === 'teacher' ? id : null);
+                        const personType = type;
+
+                        if (personId) {
+                            await markFaceAttendance(personId, personType, bestMatch.distance);
+                        }
+                    }
+                }
+                faceAttendanceStatus.textContent = `Faces Detected: ${detections.length}, Recognized: ${recognizedCount}`;
+            }, 100); // Run detection every 100ms
+            console.log('Face attendance video playing and detection started.');
+        });
+
+    } catch (err) {
+        console.error('Error accessing webcam or starting face attendance:', err);
+        alert('Could not start face attendance. Please ensure webcam is available and permissions are granted.');
+        stopFaceAttendance(); // Clean up UI
+    }
+}
+
+async function stopFaceAttendance() {
+    console.log('Stopping face attendance...');
+    if (faceAttendanceInterval) {
+        clearInterval(faceAttendanceInterval);
+        faceAttendanceInterval = null;
+    }
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    faceAttendanceVideo.srcObject = null;
+    faceAttendanceCanvas.getContext('2d').clearRect(0, 0, faceAttendanceCanvas.width, faceAttendanceCanvas.height);
+    faceAttendanceSection.classList.add('hidden');
+    startFaceAttendanceBtn.classList.remove('hidden');
+    stopFaceAttendanceBtn.classList.add('hidden');
+    faceAttendanceStatus.textContent = '';
+    console.log('Face attendance stopped.');
+}
+
+/**
+ * Marks attendance for a recognized person.
+ * @param {string} personId - The ID of the recognized student or teacher.
+ * @param {'student'|'teacher'} personType - The type of person ('student' or 'teacher').
+ * @param {number} confidence - The confidence score of the recognition.
+ */
+async function markFaceAttendance(personId, personType, confidence) {
+    const today = new Date().toISOString().split('T')[0];
+    const currentTime = new Date().toTimeString().split(' ')[0];
+    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+    const userEmail = loggedInUser?.email || 'Face Attendance System';
+
+    let tableName = '';
+    let idColumn = '';
+    let name = 'Unknown';
+    let recordsArray = [];
+
+    if (personType === 'student') {
+        tableName = 'attendance';
+        idColumn = 'student_id';
+        recordsArray = attendanceRecords;
+        const student = students.find(s => s.id === personId);
+        name = student ? student.name : `Student ${personId}`;
+    } else if (personType === 'teacher') {
+        tableName = 'teacher_attendance';
+        idColumn = 'teacher_id';
+        recordsArray = teacherAttendanceRecords;
+        const teacher = teachers.find(t => t.id === personId);
+        name = teacher ? teacher.name : `Teacher ${personId}`;
+    } else {
+        console.warn(`Invalid person type for attendance: ${personType}`);
+        return;
+    }
+
+    // Check if attendance already marked for today
+    const existingRecord = recordsArray.find(rec =>
+        rec[idColumn] === personId && rec.date === today && rec.status === 'Present'
+    );
+
+    if (existingRecord && existingRecord.arrival_time) {
+        // Already marked present with arrival time
+        console.log(`Attendance already marked for ${name} today.`);
+        await addAuditLog(userEmail, 'Face Attendance Duplicate', 'Attendance', `Duplicate face scan for ${name} (ID: ${personId})`);
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase.from(tableName).upsert(
+            {
+                [idColumn]: personId,
+                date: today,
+                status: 'Present',
+                arrival_time: currentTime,
+                remarks: `Face Recognition (Confidence: ${confidence.toFixed(2)})`
+            },
+            { onConflict: [idColumn, 'date'] } // Update if record for today already exists
+        ).select();
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            console.log(`Attendance marked for ${name} via Face Recognition.`);
+            await addAuditLog(userEmail, 'Face Attendance Marked', 'Attendance', `Marked Present for ${name} (ID: ${personId}) via Face Recognition`);
+            // Refresh relevant attendance data
+            if (personType === 'student') {
+                await fetchAttendanceRecords();
+            } else {
+                await fetchTeacherAttendanceRecords();
+            }
+        }
+    } catch (error) {
+        console.error(`Error marking attendance for ${name}:`, error);
+        await addAuditLog(userEmail, 'Face Attendance Failed', 'Attendance', `Failed to mark attendance for ${name} (ID: ${personId}): ${error.message}`);
+    }
+}
+
     if (moduleName === 'dashboard') {
         if (dashboardMainContent) {
             dashboardMainContent.classList.remove('hidden');
@@ -2980,6 +2240,8 @@ function renderFinanceTable(filteredInvoices = invoices) {
         financeTableBody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-gray-500">No invoices found.</td></tr>';
         return;
     }
+    // const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser')); // Not used for rendering
+    // const userRole = loggedInUser ? loggedInUser.user_metadata?.role || loggedInUser.app_metadata?.role : null;
 
     filteredInvoices.forEach(invoice => {
         const newRow = document.createElement('tr');
@@ -3021,9 +2283,6 @@ function renderFinanceTable(filteredInvoices = invoices) {
                 <button class="text-blue-600 hover:text-blue-800 mr-3" title="View Details" onclick="showInvoiceDetailsModal('${invoice.id}')">
                     <i class="fas fa-eye"></i>
                 </button>
-                <button class="text-green-600 hover:text-green-800" title="Print Slip" onclick="printInvoiceSlip('${invoice.id}')">
-                    <i class="fas fa-print"></i>
-                </button>
                 <button class="text-red-600 hover:text-red-800" title="Download PDF" onclick="alert('Downloading PDF for invoice ${invoice.invoice_number}')">
                     <i class="fas fa-file-pdf"></i>
                 </button>
@@ -3033,66 +2292,6 @@ function renderFinanceTable(filteredInvoices = invoices) {
     });
     console.log('Finance table rendered.');
 }
-
-// New function for printing a simplified invoice slip
-window.printInvoiceSlip = async function(invoiceId) {
-    console.log(`Generating print slip for invoice ID: ${invoiceId}`);
-    const invoice = invoices.find(inv => inv.id === invoiceId);
-    if (!invoice) {
-        alert('Invoice not found for printing slip.');
-        console.error(`Invoice with ID ${invoiceId} not found for slip printing.`);
-        return;
-    }
-
-    const student = students.find(s => s.id === invoice.student_id);
-    const studentName = student ? student.name : 'N/A';
-    const studentClass = student ? student.class : 'N/A';
-    const fatherName = student ? student.father_name : 'N/A';
-    const dueAmount = parseFloat(invoice.amount) - parseFloat(invoice.paid_amount || 0);
-
-    const slipContent = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ccc; max-width: 400px; margin: 20px auto;">
-            <h3 style="text-align: center; margin-bottom: 15px;">Invoice Slip - Tapowan Public School</h3>
-            <p><strong>Invoice No:</strong> ${invoice.invoice_number}</p>
-            <p><strong>Date:</strong> ${invoice.date}</p>
-            <hr style="margin: 10px 0;">
-            <p><strong>Student Name:</strong> ${studentName}</p>
-            <p><strong>Class:</strong> ${studentClass}</p>
-            <p><strong>Father's Name:</strong> ${fatherName}</p>
-            <hr style="margin: 10px 0;">
-            <p><strong>Total Amount:</strong> ₹${parseFloat(invoice.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p><strong>Paid Amount:</strong> ₹${parseFloat(invoice.paid_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p><strong>Due Amount:</strong> ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p><strong>Status:</strong> ${invoice.status}</p>
-            <hr style="margin: 10px 0;">
-            <p style="text-align: center; font-size: 0.8em;">Thank you for your payment!</p>
-        </div>
-    `;
-
-    const printWindow = window.open('', '_blank', 'width=600,height=400');
-    printWindow.document.write('<html><head><title>Invoice Slip</title>');
-    printWindow.document.write('<style>');
-    printWindow.document.write(`
-        body { margin: 0; padding: 0; }
-        @media print {
-            body { margin: 0; padding: 0; }
-            div { box-shadow: none !important; border: none !important; }
-        }
-    `);
-    printWindow.document.write('</style>');
-    printWindow.document.write('</head><body>');
-    printWindow.document.write(slipContent);
-    printWindow.document.write('</body></html>');
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
-    console.log('Invoice slip print initiated.');
-
-    const loggedInUser  = JSON.parse(localStorage.getItem('loggedInUser '));
-    await addAuditLog(loggedInUser ?.email || 'admin', 'Printed Invoice Slip', 'Finance', `Printed slip for invoice ${invoice.invoice_number}`);
-};
-
 
 function filterInvoices() {
     const invoiceNumberQueryInput = document.getElementById('searchInvoiceNumber');
@@ -3921,8 +3120,6 @@ async function markIndividualAttendance(studentId, date, status, remarks) {
         student_id: studentId,
         date: date,
         status: status,
-        arrival_time: status === 'Present' ? new Date().toTimeString().split(' ')[0] : null, // Set arrival time if marking present
-        departure_time: null, // Clear departure time if marking present
         remarks: remarks
     };
 
@@ -5095,7 +4292,6 @@ window.showStudentQrCodeModal = function(studentId) {
         return;
     }
 
-    const studentQrCodeModalTitle = document.getElementById('studentQrCodeModalTitle'); // Assuming this element exists
     if (studentQrCodeModalTitle) {
         studentQrCodeModalTitle.textContent = `QR Code for ${student.name}`;
     }
@@ -5173,11 +4369,6 @@ window.startQrAttendance = function() {
     if (qrVideo) {
         qrVideo.innerHTML = ''; // Clear previous content
     }
-    if (qrScanFeedback) {
-        qrScanFeedback.innerHTML = ''; // Clear previous feedback
-        qrScanFeedback.classList.remove('text-green-600', 'text-red-600');
-    }
-
 
     html5QrCodeScanner = new Html5QrcodeScanner(
         "qrVideo",
@@ -5203,44 +4394,13 @@ window.stopQrAttendance = async function() {
             if (qrVideo) {
                 qrVideo.innerHTML = '';
             }
-            if (qrScanFeedback) {
-                qrScanFeedback.innerHTML = '';
-                qrScanFeedback.classList.remove('text-green-600', 'text-red-600');
-            }
             html5QrCodeScanner = null; // Clear the instance
         }
     }
 };
 
-// Function to play a beep sound
-function playBeep() {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    oscillator.type = 'sine';
-    oscillator.frequency.value = 440; // A4 note
-    gainNode.gain.value = 0.1; // Volume
-
-    oscillator.start();
-    setTimeout(() => {
-        oscillator.stop();
-        audioCtx.close();
-    }, 100); // Beep duration in milliseconds
-}
-
 async function onScanSuccessStudent(decodedText, decodedResult) {
     console.log(`QR Code scanned: ${decodedText}`);
-    playBeep(); // Play beep sound on successful scan
-
-    if (qrScanFeedback) {
-        qrScanFeedback.classList.remove('text-green-600', 'text-red-600'); // Reset color
-        qrScanFeedback.textContent = 'Processing...'; // Initial feedback
-    }
-
     if (decodedText.startsWith('student_attendance:')) {
         const studentId = decodedText.split(':')[1];
         const student = students.find(s => s.id === studentId);
@@ -5256,18 +4416,14 @@ async function onScanSuccessStudent(decodedText, decodedResult) {
                     .from('attendance')
                     .select('*')
                     .eq('student_id', studentId)
-                    .eq('attendance_date', today)
-
+                    .eq('date', today);
 
                 if (fetchError) throw fetchError;
 
                 if (existingRecords && existingRecords.length > 0) {
                     const existingRecord = existingRecords[0];
                     if (existingRecord.status === 'Present') {
-                        if (qrScanFeedback) {
-                            qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Already Marked Present`;
-                            qrScanFeedback.classList.add('text-red-600');
-                        }
+                        alert(`Attendance already marked for ${student.name} today.`);
                         console.log(`Attendance already marked for ${student.name} today.`);
                         await addAuditLog(userEmail, 'QR Attendance Duplicate', 'Attendance', `Duplicate QR scan for ${student.name} (ID: ${studentId})`);
                     } else {
@@ -5278,10 +4434,7 @@ async function onScanSuccessStudent(decodedText, decodedResult) {
                         }
                         const { error: updateError } = await supabase.from('attendance').update(updateData).eq('id', existingRecord.id);
                         if (updateError) throw updateError;
-                        if (qrScanFeedback) {
-                            qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Marked Present`;
-                            qrScanFeedback.classList.add('text-green-600');
-                        }
+                        alert(`Attendance updated for ${student.name}: Marked Present.`);
                         console.log(`Attendance updated for ${student.name}: Marked Present.`);
                         await addAuditLog(userEmail, 'QR Attendance Updated', 'Attendance', `Updated attendance for ${student.name} (ID: ${studentId}) to Present`);
                     }
@@ -5297,45 +4450,32 @@ async function onScanSuccessStudent(decodedText, decodedResult) {
                         }
                     ]);
                     if (insertError) throw insertError;
-                    if (qrScanFeedback) {
-                        qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Marked Present`;
-                        qrScanFeedback.classList.add('text-green-600');
-                    }
+                    alert(`Attendance marked for ${student.name}: Present.`);
                     console.log(`Attendance marked for ${student.name}: Present.`);
                     await addAuditLog(userEmail, 'QR Attendance Marked', 'Attendance', `Marked Present for ${student.name} (ID: ${studentId}) via QR scan`);
                 }
                 await fetchAttendanceRecords(); // Refresh attendance data
             } catch (error) {
-                if (qrScanFeedback) {
-                    qrScanFeedback.textContent = `Error for ${student.name}: ${error.message}`;
-                    qrScanFeedback.classList.add('text-red-600');
-                }
+                alert('Error marking attendance: ' + error.message);
                 console.error('Supabase error marking attendance via QR:', error);
                 await addAuditLog(userEmail, 'QR Attendance Failed', 'Attendance', `Error marking attendance for ${student.name} (ID: ${studentId}): ${error.message}`);
             }
         } else {
-            if (qrScanFeedback) {
-                qrScanFeedback.textContent = `Student not found for this QR code: ${studentId}`;
-                qrScanFeedback.classList.add('text-red-600');
-            }
+            alert('Student not found for this QR code.');
             console.warn(`Student not found for QR code: ${studentId}`);
             await addAuditLog('QR Scanner', 'QR Scan Failed', 'Attendance', `Student not found for QR code: ${studentId}`);
         }
     } else {
-        if (qrScanFeedback) {
-            qrScanFeedback.textContent = `Invalid QR code format: ${decodedText}`;
-            qrScanFeedback.classList.add('text-red-600');
-        }
+        alert('Invalid QR code format for student attendance.');
         console.warn(`Invalid QR code format: ${decodedText}`);
         await addAuditLog('QR Scanner', 'QR Scan Failed', 'Attendance', `Invalid QR code format: ${decodedText}`);
     }
     // Optionally stop scanner after successful scan
-    // await stopQrAttendance(); // Keep scanner running for continuous scanning
+    await stopQrAttendance();
 }
 
 function onScanErrorStudent(errorMessage) {
     // console.warn(`QR Code scan error: ${errorMessage}`); // Too verbose for console
-    // No feedback for errors to keep it clean, only for successful scans or critical errors
 }
 
 // QR Code Generation and Scanning for Teachers
@@ -5346,7 +4486,6 @@ window.showTeacherQrCodeModal = function(teacherId) {
         return;
     }
 
-    const teacherQrCodeModalTitle = document.getElementById('teacherQrCodeModalTitle'); // Assuming this element exists
     if (teacherQrCodeModalTitle) {
         teacherQrCodeModalTitle.textContent = `QR Code for ${teacher.name}`;
     }
@@ -5427,10 +4566,6 @@ window.startTeacherQrAttendance = function(type) {
     if (teacherQrScannerTitle) {
         teacherQrScannerTitle.textContent = `Scan QR Code for Teacher ${type.charAt(0).toUpperCase() + type.slice(1)} Attendance`;
     }
-    if (qrScanFeedbackTeacher) {
-        qrScanFeedbackTeacher.innerHTML = ''; // Clear previous feedback
-        qrScanFeedbackTeacher.classList.remove('text-green-600', 'text-red-600');
-    }
 
     html5QrCodeScannerTeacher = new Html5QrcodeScanner(
         "teacherQrVideo",
@@ -5456,10 +4591,6 @@ window.stopTeacherQrAttendance = async function() {
             if (teacherQrVideo) {
                 teacherQrVideo.innerHTML = '';
             }
-            if (qrScanFeedbackTeacher) {
-                qrScanFeedbackTeacher.innerHTML = '';
-                qrScanFeedbackTeacher.classList.remove('text-green-600', 'text-red-600');
-            }
             html5QrCodeScannerTeacher = null; // Clear the instance
         }
     }
@@ -5467,13 +4598,6 @@ window.stopTeacherQrAttendance = async function() {
 
 async function onScanSuccessTeacher(decodedText, decodedResult, type) {
     console.log(`Teacher QR Code scanned: ${decodedText} for ${type}`);
-    playBeep(); // Play beep sound on successful scan
-
-    if (qrScanFeedbackTeacher) {
-        qrScanFeedbackTeacher.classList.remove('text-green-600', 'text-red-600'); // Reset color
-        qrScanFeedbackTeacher.textContent = 'Processing...'; // Initial feedback
-    }
-
     if (decodedText.startsWith('teacher_attendance:')) {
         const teacherId = decodedText.split(':')[1];
         const teacher = teachers.find(t => t.id === teacherId);
@@ -5497,64 +4621,26 @@ async function onScanSuccessTeacher(decodedText, decodedResult, type) {
                     const existingRecord = existingRecords[0];
                     if (type === 'arrival') {
                         if (existingRecord.arrival_time) {
-                            if (qrScanFeedbackTeacher) {
-                                qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Already Marked`;
-                                qrScanFeedbackTeacher.classList.add('text-red-600');
-                            }
+                            alert(`Arrival already marked for ${teacher.name} today.`);
                             console.log(`Arrival already marked for ${teacher.name} today.`);
                             await addAuditLog(userEmail, 'Teacher QR Attendance Duplicate Arrival', 'Teacher Attendance', `Duplicate QR scan for ${teacher.name} (ID: ${teacherId}) - Arrival`);
                         } else {
                             const { error: updateError } = await supabase.from('teacher_attendance').update({ arrival_time: currentTime, status: 'Present' }).eq('id', existingRecord.id);
                             if (updateError) throw updateError;
-                            if (qrScanFeedbackTeacher) {
-                                qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Marked`;
-                                qrScanFeedbackTeacher.classList.add('text-green-600');
-                            }
+                            alert(`Arrival marked for ${teacher.name}.`);
                             console.log(`Arrival marked for ${teacher.name}.`);
-
-                           // Speak welcome/goodbye message
-                            const welcomeMessage = type === 'arrival'
-                            ? `Welcome to TPS, ${teacher.name}`
-                            : `Goodbye from TPS, ${teacher.name}`;
-                            window.speechSynthesis.cancel();
-                            const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                            utterance.lang = 'en-US';
-                            utterance.pitch = 1;
-                            utterance.rate = 1;
-                            window.speechSynthesis.speak(utterance);
-
-
                             await addAuditLog(userEmail, 'Teacher QR Attendance Arrival', 'Teacher Attendance', `Marked Arrival for ${teacher.name} (ID: ${teacherId}) via QR scan`);
                         }
                     } else if (type === 'departure') {
                         if (existingRecord.departure_time) {
-                            if (qrScanFeedbackTeacher) {
-                                qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Departure Already Marked`;
-                                qrScanFeedbackTeacher.classList.add('text-red-600');
-                            }
+                            alert(`Departure already marked for ${teacher.name} today.`);
                             console.log(`Departure already marked for ${teacher.name} today.`);
                             await addAuditLog(userEmail, 'Teacher QR Attendance Duplicate Departure', 'Teacher Attendance', `Duplicate QR scan for ${teacher.name} (ID: ${teacherId}) - Departure`);
                         } else {
                             const { error: updateError } = await supabase.from('teacher_attendance').update({ departure_time: currentTime }).eq('id', existingRecord.id);
                             if (updateError) throw updateError;
-                            if (qrScanFeedbackTeacher) {
-                                qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Departure Marked`;
-                                qrScanFeedbackTeacher.classList.add('text-green-600');
-                            }
+                            alert(`Departure marked for ${teacher.name}.`);
                             console.log(`Departure marked for ${teacher.name}.`);
-
-                            // Speak welcome/goodbye message
-                            const welcomeMessage = type === 'arrival'
-                                ? `Welcome to TPS, ${teacher.name}`
-                                : `Goodbye from TPS, ${teacher.name}`;
-                            window.speechSynthesis.cancel();
-                            const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                            utterance.lang = 'en-US';
-                            utterance.pitch = 1;
-                            utterance.rate = 1;
-                            window.speechSynthesis.speak(utterance);
-
-
                             await addAuditLog(userEmail, 'Teacher QR Attendance Departure', 'Teacher Attendance', `Marked Departure for ${teacher.name} (ID: ${teacherId}) via QR scan`);
                         }
                     }
@@ -5571,163 +4657,38 @@ async function onScanSuccessTeacher(decodedText, decodedResult, type) {
                             }
                         ]);
                         if (insertError) throw insertError;
-                        if (qrScanFeedbackTeacher) {
-                            qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Marked`;
-                            qrScanFeedbackTeacher.classList.add('text-green-600');
-                        }
+                        alert(`Arrival marked for ${teacher.name}.`);
                         console.log(`Arrival marked for ${teacher.name}.`);
-
-                        // Speak welcome/goodbye message
-                            const welcomeMessage = type === 'arrival'
-                                ? `Welcome to TPS, ${teacher.name}`
-                                : `Goodbye from TPS, ${teacher.name}`;
-                            window.speechSynthesis.cancel();
-                            const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                            utterance.lang = 'en-US';
-                            utterance.pitch = 1;
-                            utterance.rate = 1;
-                            window.speechSynthesis.speak(utterance);
-
-
                         await addAuditLog(userEmail, 'Teacher QR Attendance Marked', 'Teacher Attendance', `Marked Arrival for ${teacher.name} (ID: ${teacherId}) via QR scan`);
                     } else {
-                        if (qrScanFeedbackTeacher) {
-                            qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Please mark arrival first.`;
-                            qrScanFeedbackTeacher.classList.add('text-red-600');
-                        }
+                        alert(`Please mark arrival first for ${teacher.name}.`);
                         console.warn(`Attempted to mark departure before arrival for ${teacher.name}.`);
                         await addAuditLog(userEmail, 'Teacher QR Scan Error', 'Teacher Attendance', `Attempted to mark departure before arrival for ${teacher.name} (ID: ${teacherId})`);
                     }
                 }
                 await fetchTeacherAttendanceRecords(); // Refresh attendance data
             } catch (error) {
-                if (qrScanFeedbackTeacher) {
-                    qrScanFeedbackTeacher.textContent = `Error for ${teacher.name}: ${error.message}`;
-                    qrScanFeedbackTeacher.classList.add('text-red-600');
-                }
+                alert('Error marking attendance: ' + error.message);
                 console.error('Supabase error marking teacher attendance via QR:', error);
                 await addAuditLog(userEmail, 'Teacher QR Attendance Failed', 'Teacher Attendance', `Error marking attendance for ${teacher.name} (ID: ${teacherId}): ${error.message}`);
             }
         } else {
-            if (qrScanFeedbackTeacher) {
-                qrScanFeedbackTeacher.textContent = `Teacher not found for this QR code: ${teacherId}`;
-                qrScanFeedbackTeacher.classList.add('text-red-600');
-            }
+            alert('Teacher not found for this QR code.');
             console.warn(`Teacher not found for QR code: ${teacherId}`);
             await addAuditLog('QR Scanner', 'QR Scan Failed', 'Teacher Attendance', `Teacher not found for QR code: ${teacherId}`);
         }
     } else {
-        if (qrScanFeedbackTeacher) {
-            qrScanFeedbackTeacher.textContent = `Invalid QR code format: ${decodedText}`;
-            qrScanFeedbackTeacher.classList.add('text-red-600');
-        }
+        alert('Invalid QR code format for teacher attendance.');
         console.warn(`Invalid QR code format: ${decodedText}`);
         await addAuditLog('QR Scanner', 'QR Scan Failed', 'Teacher Attendance', `Invalid QR code format: ${decodedText}`);
     }
-}
-
-
     // Optionally stop scanner after successful scan
-    // await stopTeacherQrAttendance(); // Keep scanner running for continuous scanning
+    await stopTeacherQrAttendance();
+}
 
 function onScanErrorTeacher(errorMessage) {
     // console.warn(`Teacher QR Code scan error: ${errorMessage}`); // Too verbose for console
-    // No feedback for errors to keep it clean, only for successful scans or critical errors
 }
-
-// --- START NEW CODE INSERTION ---
-
-// This is a highly simplified and INSECURE conceptual example.
-// DO NOT USE IN PRODUCTION. It lacks crucial security, privacy, and error handling.
-
-// Function to start face recognition for attendance
-async function startTeacherFaceRecognition() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Your browser does not support camera access.');
-        console.error('getUserMedia not supported in this browser.');
-        return;
-    }
-
-    const videoElement = document.getElementById('teacherFaceRecognitionVideo'); // Assume you have a <video id="teacherFaceRecognitionVideo"></video>
-    const feedbackElement = document.getElementById('teacherFaceRecognitionFeedback'); // Assume a feedback element
-
-    if (!videoElement || !feedbackElement) {
-        console.error('Video or feedback element not found for face recognition.');
-        return;
-    }
-
-    feedbackElement.textContent = 'Loading face recognition models...';
-
-    try {
-        // Load face-api.js models (conceptual, requires actual library setup)
-        // await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        // await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-        // await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
-        // await faceapi.nets.faceExpressionNet.loadFromUri('/models'); // Example model
-
-        feedbackElement.textContent = 'Models loaded. Starting camera...';
-
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoElement.srcObject = stream;
-        videoElement.play();
-
-        videoElement.addEventListener('play', () => {
-            feedbackElement.textContent = 'Camera started. Looking for faces...';
-            const displaySize = { width: videoElement.width, height: videoElement.height };
-            // faceapi.matchDimensions(canvas, displaySize); // Conceptual canvas for drawing
-
-            setInterval(async () => {
-                // Conceptual: Detect faces and extract descriptors
-                // const detections = await faceapi.detectAllFaces(videoElement, new faceapi.TinyFaceDetectorOptions())
-                //     .withFaceLandmarks()
-                //     .withFaceDescriptors();
-
-                // if (detections.length > 0) {
-                //     feedbackElement.textContent = 'Face detected! Attempting to recognize...';
-                //     // In a real system, send 'detections[0].descriptor' to a secure backend
-                //     // for comparison against stored teacher face templates.
-                //     // For this example, we'll just simulate success.
-
-                //     const simulatedTeacherId = 'some-teacher-uuid-from-db'; // Replace with actual recognized ID
-                //     const teacher = teachers.find(t => t.id === simulatedTeacherId);
-
-                //     if (teacher) {
-                //         feedbackElement.textContent = `Recognized: ${teacher.name}. Marking attendance...`;
-                //         // Call your existing attendance marking function
-                //         // await markTeacherAttendance(teacher.id, 'Present', 'Face Recognition');
-                //         // stopTeacherFaceRecognition(); // Stop after successful recognition
-                //     } else {
-                //         feedbackElement.textContent = 'Face recognized, but teacher not found in system.';
-                //     }
-                // } else {
-                //     feedbackElement.textContent = 'No face detected.';
-                // }
-            }, 1000); // Check every second
-        });
-
-    } catch (err) {
-        console.error('Error accessing camera or loading models:', err);
-        feedbackElement.textContent = `Error: ${err.message}. Please ensure camera is available and permissions are granted.`;
-        alert(`Error starting face recognition: ${err.message}`);
-    }
-}
-
-// Function to stop face recognition
-function stopTeacherFaceRecognition() {
-    const videoElement = document.getElementById('teacherFaceRecognitionVideo');
-    if (videoElement && videoElement.srcObject) {
-        videoElement.srcObject.getTracks().forEach(track => track.stop());
-        videoElement.srcObject = null;
-    }
-    const feedbackElement = document.getElementById('teacherFaceRecognitionFeedback');
-    if (feedbackElement) {
-        feedbackElement.textContent = '';
-    }
-    console.log('Face recognition stopped.');
-}
-
-// --- END NEW CODE INSERTION ---
-
 
 // Exams Module Functions
 function renderExams() {
@@ -6181,7 +5142,6 @@ window.deleteHomework = async function(id) {
 window.showHomeworkDetailsModal = function(id) {
     const assignment = homeworkAssignments.find(a => a.id === id);
     if (assignment) {
-        const homeworkDetailsModalTitle = document.getElementById('homeworkDetailsModalTitle'); // Assuming this element exists
         if (homeworkDetailsModalTitle) {
             homeworkDetailsModalTitle.textContent = `Details for "${assignment.title}"`;
         }
@@ -6788,7 +5748,7 @@ function initCharts() {
         }]
     };
 
-        const studentAttendanceCtx = document.getElementById('studentAttendanceChart');
+    const studentAttendanceCtx = document.getElementById('studentAttendanceChart');
     if (studentAttendanceCtx) {
         studentAttendanceChartInstance = new Chart(studentAttendanceCtx, {
             type: 'pie',
@@ -6799,7 +5759,7 @@ function initCharts() {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Student Attendance Overview'
+                        text: 'Student Attendance Distribution'
                     }
                 }
             }
@@ -6816,7 +5776,7 @@ function initCharts() {
         labels: ['Present', 'Absent', 'On Leave'],
         datasets: [{
             data: [teacherAttendanceCounts.present, teacherAttendanceCounts.absent, teacherAttendanceCounts.leave],
-            backgroundColor: ['#4CAF50', '#F44336', '#FFC107'],
+            backgroundColor: ['#2196F3', '#F44336', '#FF9800'],
             hoverOffset: 4
         }]
     };
@@ -6832,868 +5792,47 @@ function initCharts() {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Teacher Attendance Overview'
+                        text: 'Teacher Attendance Distribution'
                     }
                 }
             }
         });
     }
 
-    // Data for Monthly Attendance Trend Chart
-    const monthlyAttendanceData = {
+    // Data for Monthly Attendance Trend (Example)
+    const monthlyTrendData = {
         labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         datasets: [{
-            label: 'Monthly Attendance',
-            data: Array(12).fill(0).map((_, index) => {
-                const month = index + 1;
-                return attendanceRecords.filter(record => new Date(record.date).getMonth() + 1 === month).length;
-            }),
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            borderWidth: 1
+            label: 'Average Monthly Attendance (%)',
+            data: [85, 88, 90, 87, 92, 91, 89, 93, 90, 88, 91, 94],
+            fill: false,
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
         }]
     };
 
     const monthlyAttendanceTrendCtx = document.getElementById('monthlyAttendanceTrendChart');
     if (monthlyAttendanceTrendCtx) {
         monthlyAttendanceTrendChartInstance = new Chart(monthlyAttendanceTrendCtx, {
-            type: 'bar',
-            data: monthlyAttendanceData,
+            type: 'line',
+            data: monthlyTrendData,
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true }
-                },
                 plugins: {
                     title: {
                         display: true,
                         text: 'Monthly Attendance Trend'
                     }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
                 }
             }
         });
     }
-
-    console.log('All charts initialized successfully.');
+    console.log('Dashboard charts initialized.');
 }
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadAllData(); // Load all data on initial load
-    updateDashboardStats(); // Update dashboard stats after data load
-    initCharts(); // Initialize charts after data load
-});
-
-
-
-// QR Code Scanning for Attendance
-// QR Code Scanning for Attendance
-window.startQrAttendance = function() {
-    if (!checkHtml5QrCodeAvailability()) return;
-
-    if (qrScannerSection) {
-        qrScannerSection.classList.remove('hidden');
-    }
-    if (qrVideo) {
-        qrVideo.innerHTML = ''; // Clear previous content
-    }
-    if (qrScanFeedback) {
-        qrScanFeedback.innerHTML = ''; // Clear previous feedback
-        qrScanFeedback.classList.remove('text-green-600', 'text-red-600');
-    }
-
-    html5QrCodeScanner = new Html5QrcodeScanner(
-        "qrVideo",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-    );
-
-    // --- MODIFIED CODE START ---
-    html5QrCodeScanner.render(
-        async (decodedText, decodedResult) => {
-            // Handle success, e.g., stop scanning and process the ID
-            console.log(`QR Code scanned: ${decodedText}`);
-            playBeep(); // Play beep sound on successful scan
-
-            if (qrScanFeedback) {
-                qrScanFeedback.classList.remove('text-green-600', 'text-red-600'); // Reset color
-                qrScanFeedback.textContent = 'Processing...'; // Initial feedback
-            }
-
-            // Process the scanned student ID and mark attendance
-            if (decodedText.startsWith('student_attendance:')) {
-                const studentId = decodedText.split(':')[1];
-                const student = students.find(s => s.id === studentId);
-                if (student) {
-                    const today = new Date().toISOString().split('T')[0];
-                    const currentTime = new Date().toTimeString().split(' ')[0];
-                    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser')); // Corrected variable name
-                    const userEmail = loggedInUser?.email || 'QR Scanner';
-
-                    try {
-                        // Check if an attendance record already exists for today
-                        const { data: existingRecords, error: fetchError } = await supabase
-                            .from('attendance')
-                            .select('*')
-                            .eq('student_id', studentId)
-                            .eq('attendance_date', today);
-
-                        if (fetchError) throw fetchError;
-
-                        if (existingRecords && existingRecords.length > 0) {
-                            const existingRecord = existingRecords[0];
-                            if (existingRecord.status === 'Present') {
-                                if (qrScanFeedback) {
-                                    qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Already Marked Present`;
-                                    qrScanFeedback.classList.add('text-red-600');
-                                }
-                                console.log(`Attendance already marked for ${student.name} today.`);
-                                await addAuditLog(userEmail, 'QR Attendance Duplicate', 'Attendance', `Duplicate QR scan for ${student.name} (ID: ${studentId})`);
-                            } else {
-                                // Update status to Present and set arrival time if not already set
-                                const updateData = { status: 'Present' };
-                                if (!existingRecord.arrival_time) {
-                                    updateData.arrival_time = currentTime;
-                                }
-                                const { error: updateError } = await supabase.from('attendance').update(updateData).eq('id', existingRecord.id);
-                                if (updateError) throw updateError;
-                                if (qrScanFeedback) {
-                                    qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Marked Present`;
-                                    qrScanFeedback.classList.add('text-green-600');
-                                }
-                                console.log(`Attendance updated for ${student.name}: Marked Present.`);
-                                await addAuditLog(userEmail, 'QR Attendance Updated', 'Attendance', `Updated attendance for ${student.name} (ID: ${studentId}) to Present`);
-                            }
-                        } else {
-                            // Create new attendance record
-                            const { error: insertError } = await supabase.from('attendance').insert([
-                                {
-                                    student_id: studentId,
-                                    date: today,
-                                    status: 'Present',
-                                    arrival_time: currentTime,
-                                    remarks: 'QR Scan'
-                                }
-                            ]);
-                            if (insertError) throw insertError;
-                            if (qrScanFeedback) {
-                                qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Marked Present`;
-                                qrScanFeedback.classList.add('text-green-600');
-                            }
-                            console.log(`Attendance marked for ${student.name}: Present.`);
-                            await addAuditLog(userEmail, 'QR Attendance Marked', 'Attendance', `Marked Present for ${student.name} (ID: ${studentId}) via QR scan`);
-                        }
-                        await fetchAttendanceRecords(); // Refresh attendance data
-                    } catch (error) {
-                        if (qrScanFeedback) {
-                            qrScanFeedback.textContent = `Error for ${student.name}: ${error.message}`;
-                            qrScanFeedback.classList.add('text-red-600');
-                        }
-                        console.error('Supabase error marking attendance via QR:', error);
-                        await addAuditLog(userEmail, 'QR Attendance Failed', 'Attendance', `Error marking attendance for ${student.name} (ID: ${studentId}): ${error.message}`);
-                    }
-                } else {
-                    if (qrScanFeedback) {
-                        qrScanFeedback.textContent = `Student not found for this QR code: ${studentId}`;
-                        qrScanFeedback.classList.add('text-red-600');
-                    }
-                    console.warn(`Student not found for QR code: ${studentId}`);
-                    await addAuditLog('QR Scanner', 'QR Scan Failed', 'Attendance', `Student not found for QR code: ${studentId}`);
-                }
-            } else {
-                if (qrScanFeedback) {
-                    qrScanFeedback.textContent = `Invalid QR code format: ${decodedText}`;
-                    qrScanFeedback.classList.add('text-red-600');
-                }
-                console.warn(`Invalid QR code format: ${decodedText}`);
-                await addAuditLog('QR Scanner', 'QR Scan Failed', 'Attendance', `Invalid QR code format: ${decodedText}`);
-            }
-        },
-        (errorMessage) => {
-            // console.warn(`QR Code scan error: ${errorMessage}`); // Too verbose for console
-        }
-    );
-    // --- MODIFIED CODE END ---
-    console.log('Student QR attendance scanner started.');
-};
-
-
-// Stop QR Attendance Scanning
-window.stopQrAttendance = async function() {
-    if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
-        try {
-            await html5QrCodeScanner.stop();
-            console.log('Student QR attendance scanner stopped.');
-        } catch (err) {
-            console.error('Error stopping student QR scanner:', err);
-        } finally {
-            if (qrScannerSection) {
-                qrScannerSection.classList.add('hidden');
-            }
-            if (qrVideo) {
-                qrVideo.innerHTML = '';
-            }
-            if (qrScanFeedback) {
-                qrScanFeedback.innerHTML = '';
-                qrScanFeedback.classList.remove('text-green-600', 'text-red-600');
-            }
-            html5QrCodeScanner = null; // Clear the instance
-        }
-    }
-};
-
-// Function to handle successful QR scan for students
-async function onScanSuccessStudent(decodedText, decodedResult) {
-    console.log(`QR Code scanned: ${decodedText}`);
-    playBeep(); // Play beep sound on successful scan
-
-    if (qrScanFeedback) {
-        qrScanFeedback.classList.remove('text-green-600', 'text-red-600'); // Reset color
-        qrScanFeedback.textContent = 'Processing...'; // Initial feedback
-    }
-
-    if (decodedText.startsWith('student_attendance:')) {
-        const studentId = decodedText.split(':')[1];
-        const student = students.find(s => s.id === studentId);
-        if (student) {
-            const today = new Date().toISOString().split('T')[0];
-            const currentTime = new Date().toTimeString().split(' ')[0];
-            const loggedInUser  = JSON.parse(localStorage.getItem('loggedInUser '));
-            const userEmail = loggedInUser ?.email || 'QR Scanner';
-
-            try {
-                // Check if an attendance record already exists for today
-                const { data: existingRecords, error: fetchError } = await supabase
-                    .from('attendance')
-                    .select('*')
-                    .eq('student_id', studentId)
-                    .eq('attendance_date', today);
-
-                if (fetchError) throw fetchError;
-
-                if (existingRecords && existingRecords.length > 0) {
-                    const existingRecord = existingRecords[0];
-                    if (existingRecord.status === 'Present') {
-                        if (qrScanFeedback) {
-                            qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Already Marked Present`;
-                            qrScanFeedback.classList.add('text-red-600');
-                        }
-                        console.log(`Attendance already marked for ${student.name} today.`);
-                        await addAuditLog(userEmail, 'QR Attendance Duplicate', 'Attendance', `Duplicate QR scan for ${student.name} (ID: ${studentId})`);
-                    } else {
-                        // Update status to Present and set arrival time if not already set
-                        const updateData = { status: 'Present' };
-                        if (!existingRecord.arrival_time) {
-                            updateData.arrival_time = currentTime;
-                        }
-                        const { error: updateError } = await supabase.from('attendance').update(updateData).eq('id', existingRecord.id);
-                        if (updateError) throw updateError;
-                        if (qrScanFeedback) {
-                            qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Marked Present`;
-                            qrScanFeedback.classList.add('text-green-600');
-                        }
-                        console.log(`Attendance updated for ${student.name}: Marked Present.`);
-                        await addAuditLog(userEmail, 'QR Attendance Updated', 'Attendance', `Updated attendance for ${student.name} (ID: ${studentId}) to Present`);
-                    }
-                } else {
-                    // Create new attendance record
-                    const { error: insertError } = await supabase.from('attendance').insert([
-                        {
-                            student_id: studentId,
-                            date: today,
-                            status: 'Present',
-                            arrival_time: currentTime,
-                            remarks: 'QR Scan'
-                        }
-                    ]);
-                    if (insertError) throw insertError;
-                    if (qrScanFeedback) {
-                        qrScanFeedback.textContent = `${student.name} (Roll No: ${student.roll_no}) - Marked Present`;
-                        qrScanFeedback.classList.add('text-green-600');
-                    }
-                    console.log(`Attendance marked for ${student.name}: Present.`);
-                    await addAuditLog(userEmail, 'QR Attendance Marked', 'Attendance', `Marked Present for ${student.name} (ID: ${studentId}) via QR scan`);
-                }
-                await fetchAttendanceRecords(); // Refresh attendance data
-            } catch (error) {
-                if (qrScanFeedback) {
-                    qrScanFeedback.textContent = `Error for ${student.name}: ${error.message}`;
-                    qrScanFeedback.classList.add('text-red-600');
-                }
-                console.error('Supabase error marking attendance via QR:', error);
-                await addAuditLog(userEmail, 'QR Attendance Failed', 'Attendance', `Error marking attendance for ${student.name} (ID: ${studentId}): ${error.message}`);
-            }
-        } else {
-            if (qrScanFeedback) {
-                qrScanFeedback.textContent = `Student not found for this QR code: ${studentId}`;
-                qrScanFeedback.classList.add('text-red-600');
-            }
-            console.warn(`Student not found for QR code: ${studentId}`);
-            await addAuditLog('QR Scanner', 'QR Scan Failed', 'Attendance', `Student not found for QR code: ${studentId}`);
-        }
-    } else {
-        if (qrScanFeedback) {
-            qrScanFeedback.textContent = `Invalid QR code format: ${decodedText}`;
-            qrScanFeedback.classList.add('text-red-600');
-        }
-        console.warn(`Invalid QR code format: ${decodedText}`);
-        await addAuditLog('QR Scanner', 'QR Scan Failed', 'Attendance', `Invalid QR code format: ${decodedText}`);
-    }
-}
-
-// Function to handle errors during QR scanning
-function onScanErrorStudent(errorMessage) {
-    // console.warn(`QR Code scan error: ${errorMessage}`); // Too verbose for console
-}
-
-// QR Code Scanning for Teacher Attendance
-window.startTeacherQrAttendance = function(type) {
-    if (!checkHtml5QrCodeAvailability()) return;
-
-    if (teacherQrScannerSection) {
-        teacherQrScannerSection.classList.remove('hidden');
-    }
-    if (teacherQrVideo) {
-        teacherQrVideo.innerHTML = ''; // Clear previous content
-    }
-    if (qrScanFeedbackTeacher) {
-        qrScanFeedbackTeacher.innerHTML = ''; // Clear previous feedback
-        qrScanFeedbackTeacher.classList.remove('text-green-600', 'text-red-600');
-    }
-
-    html5QrCodeScannerTeacher = new Html5QrcodeScanner(
-        "teacherQrVideo",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-    );
-
-    html5QrCodeScannerTeacher.render(
-        async (decodedText, decodedResult) => {
-            console.log(`Teacher QR Code scanned: ${decodedText}`);
-            playBeep(); // Play beep sound on successful scan
-
-            if (qrScanFeedbackTeacher) {
-                qrScanFeedbackTeacher.classList.remove('text-green-600', 'text-red-600'); // Reset color
-                qrScanFeedbackTeacher.textContent = 'Processing...'; // Initial feedback
-            }
-
-            if (decodedText.startsWith('teacher_attendance:')) {
-                const teacherId = decodedText.split(':')[1];
-                const teacher = teachers.find(t => t.id === teacherId);
-                if (teacher) {
-                    const today = new Date().toISOString().split('T')[0];
-                    const currentTime = new Date().toTimeString().split(' ')[0];
-                    const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser')); // Corrected variable name
-                    const userEmail = loggedInUser?.email || 'QR Scanner';
-
-                    try {
-                        // Check if an attendance record already exists for today
-                        const { data: existingRecords, error: fetchError } = await supabase
-                            .from('teacher_attendance')
-                            .select('*')
-                            .eq('teacher_id', teacherId)
-                            .eq('date', today);
-
-                        if (fetchError) throw fetchError;
-
-                        if (existingRecords && existingRecords.length > 0) {
-                            const existingRecord = existingRecords[0];
-                            if (type === 'arrival') {
-                                if (existingRecord.arrival_time) {
-                                    if (qrScanFeedbackTeacher) {
-                                        qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Already Marked Arrival`;
-                                        qrScanFeedbackTeacher.classList.add('text-red-600');
-                                    }
-                                    console.log(`Arrival already marked for ${teacher.name} today.`);
-                                    await addAuditLog(userEmail, 'Teacher QR Attendance Duplicate Arrival', 'Teacher Attendance', `Duplicate QR scan for ${teacher.name} (ID: ${teacherId}) - Arrival`);
-                                } else {
-                                    const { error: updateError } = await supabase.from('teacher_attendance').update({ arrival_time: currentTime, status: 'Present' }).eq('id', existingRecord.id);
-                                    if (updateError) throw updateError;
-                                    if (qrScanFeedbackTeacher) {
-                                        qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Marked`;
-                                        qrScanFeedbackTeacher.classList.add('text-green-600');
-                                    }
-                                    console.log(`Arrival marked for ${teacher.name}.`);
-
-                                    // Speak welcome/goodbye message
-                                    const welcomeMessage = type === 'arrival'
-                                        ? `Welcome to TPS, ${teacher.name}`
-                                        : `Goodbye from TPS, ${teacher.name}`;
-                                    window.speechSynthesis.cancel();
-                                    const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                                    utterance.lang = 'en-US';
-                                    utterance.pitch = 1;
-                                    utterance.rate = 1;
-                                    window.speechSynthesis.speak(utterance);
-
-
-                                    await addAuditLog(userEmail, 'Teacher QR Attendance Arrival', 'Teacher Attendance', `Marked Arrival for ${teacher.name} (ID: ${teacherId}) via QR scan`);
-                                }
-                            } else if (type === 'departure') {
-                                if (existingRecord.departure_time) {
-                                    if (qrScanFeedbackTeacher) {
-                                        qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Already Marked Departure`;
-                                        qrScanFeedbackTeacher.classList.add('text-red-600');
-                                    }
-                                    console.log(`Departure already marked for ${teacher.name} today.`);
-                                    await addAuditLog(userEmail, 'Teacher QR Attendance Duplicate Departure', 'Teacher Attendance', `Duplicate QR scan for ${teacher.name} (ID: ${teacherId}) - Departure`);
-                                } else {
-                                    const { error: updateError } = await supabase.from('teacher_attendance').update({ departure_time: currentTime }).eq('id', existingRecord.id);
-                                    if (updateError) throw updateError;
-                                    if (qrScanFeedbackTeacher) {
-                                        qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Departure Marked`;
-                                        qrScanFeedbackTeacher.classList.add('text-green-600');
-                                    }
-                                    console.log(`Departure marked for ${teacher.name}.`)
-                                     // Speak welcome/goodbye message
-                            const welcomeMessage = type === 'arrival'
-                                ? `Welcome to TPS, ${teacher.name}`
-                                : `Goodbye from TPS, ${teacher.name}`;
-                            window.speechSynthesis.cancel();
-                            const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                            utterance.lang = 'en-US';
-                            utterance.pitch = 1;
-                            utterance.rate = 1;
-                            window.speechSynthesis.speak(utterance);
-
-                                    await addAuditLog(userEmail, 'Teacher QR Attendance Departure', 'Teacher Attendance', `Marked Departure for ${teacher.name} (ID: ${teacherId}) via QR scan`);
-                                }
-                            }
-                        } else {
-                            if (type === 'arrival') {
-                                const { error: insertError } = await supabase.from('teacher_attendance').insert([
-                                    {
-                                        teacher_id: teacherId,
-                                        date: today,
-                                        status: 'Present',
-                                        arrival_time: currentTime,
-                                        remarks: 'QR Scan'
-                                    }
-                                ]);
-                                if (insertError) throw insertError;
-                                if (qrScanFeedbackTeacher) {
-                                    qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Marked`;
-                                    qrScanFeedbackTeacher.classList.add('text-green-600');
-                                }
-                                console.log(`Arrival marked for ${teacher.name}.`);
-
-                                // Speak welcome/goodbye message
-                                const welcomeMessage = type === 'arrival'
-                                    ? `Welcome to TPS, ${teacher.name}`
-                                    : `Goodbye from TPS, ${teacher.name}`;
-                                window.speechSynthesis.cancel();
-                                const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                                utterance.lang = 'en-US';
-                                utterance.pitch = 1;
-                                utterance.rate = 1;
-                                window.speechSynthesis.speak(utterance);
-
-                                await addAuditLog(userEmail, 'Teacher QR Attendance Marked', 'Teacher Attendance', `Marked Arrival for ${teacher.name} (ID: ${teacherId}) via QR scan`);
-                            } else {
-                                if (qrScanFeedbackTeacher) {
-                                    qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Please mark arrival first.`;
-                                    qrScanFeedbackTeacher.classList.add('text-red-600');
-                                }
-                                console.warn(`Attempted to mark departure before arrival for ${teacher.name}.`);
-                                await addAuditLog(userEmail, 'Teacher QR Scan Error', 'Teacher Attendance', `Attempted to mark departure before arrival for ${teacher.name} (ID: ${teacherId})`);
-                            }
-                        }
-                        await fetchTeacherAttendanceRecords(); // Refresh attendance data
-                    } catch (error) {
-                        if (qrScanFeedbackTeacher) {
-                            qrScanFeedbackTeacher.textContent = `Error for ${teacher.name}: ${error.message}`;
-                            qrScanFeedbackTeacher.classList.add('text-red-600');
-                        }
-                        console.error('Supabase error marking teacher attendance via QR:', error);
-                        await addAuditLog(userEmail, 'Teacher QR Attendance Failed', 'Teacher Attendance', `Error marking attendance for ${teacher.name} (ID: ${teacherId}): ${error.message}`);
-                    }
-                } else {
-                    if (qrScanFeedbackTeacher) {
-                        qrScanFeedbackTeacher.textContent = `Teacher not found for this QR code: ${teacherId}`;
-                        qrScanFeedbackTeacher.classList.add('text-red-600');
-                    }
-                    console.warn(`Teacher not found for QR code: ${teacherId}`);
-                    await addAuditLog('QR Scanner', 'QR Scan Failed', 'Teacher Attendance', `Teacher not found for QR code: ${teacherId}`);
-                }
-            } else {
-                if (qrScanFeedbackTeacher) {
-                    qrScanFeedbackTeacher.textContent = `Invalid QR code format: ${decodedText}`;
-                    qrScanFeedbackTeacher.classList.add('text-red-600');
-                }
-                console.warn(`Invalid QR code format: ${decodedText}`);
-                await addAuditLog('QR Scanner', 'QR Scan Failed', 'Teacher Attendance', `Invalid QR code format: ${decodedText}`);
-            }
-        },
-        (errorMessage) => {
-            // console.warn(`Teacher QR Code scan error: ${errorMessage}`); // Too verbose for console
-        }
-    );
-    console.log(`Teacher QR attendance scanner started for ${type}.`);
-};
-
-// Stop Teacher QR Attendance Scanning
-window.stopTeacherQrAttendance = async function() {
-    if (html5QrCodeScannerTeacher && html5QrCodeScannerTeacher.isScanning) {
-        try {
-            await html5QrCodeScannerTeacher.stop();
-            console.log('Teacher QR attendance scanner stopped.');
-        } catch (err) {
-            console.error('Error stopping teacher QR scanner:', err);
-        } finally {
-            if (teacherQrScannerSection) {
-                teacherQrScannerSection.classList.add('hidden');
-            }
-            if (teacherQrVideo) {
-                teacherQrVideo.innerHTML = '';
-            }
-            if (qrScanFeedbackTeacher) {
-                qrScanFeedbackTeacher.innerHTML = '';
-                qrScanFeedbackTeacher.classList.remove('text-green-600', 'text-red-600');
-            }
-            html5QrCodeScannerTeacher = null; // Clear the instance
-        }
-    }
-};
-
-// Function to handle successful QR scan for teachers
-async function onScanSuccessTeacher(decodedText, decodedResult) {
-    console.log(`Teacher QR Code scanned: ${decodedText}`);
-    playBeep(); // Play beep sound on successful scan
-
-    if (qrScanFeedbackTeacher) {
-        qrScanFeedbackTeacher.classList.remove('text-green-600', 'text-red-600'); // Reset color
-        qrScanFeedbackTeacher.textContent = 'Processing...'; // Initial feedback
-    }
-
-    if (decodedText.startsWith('teacher_attendance:')) {
-        const teacherId = decodedText.split(':')[1];
-        const teacher = teachers.find(t => t.id === teacherId);
-        if (teacher) {
-            const today = new Date().toISOString().split('T')[0];
-            const currentTime = new Date().toTimeString().split(' ')[0];
-            const loggedInUser  = JSON.parse(localStorage.getItem('loggedInUser '));
-            const userEmail = loggedInUser ?.email || 'QR Scanner';
-
-            try {
-                // Check if an attendance record already exists for today
-                const { data: existingRecords, error: fetchError } = await supabase
-                    .from('teacher_attendance')
-                    .select('*')
-                    .eq('teacher_id', teacherId)
-                    .eq('date', today);
-
-                if (fetchError) throw fetchError;
-
-                if (existingRecords && existingRecords.length > 0) {
-                    const existingRecord = existingRecords[0];
-                    if (existingRecord.status === 'Present') {
-                        if (qrScanFeedbackTeacher) {
-                            qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Already Marked`;
-                            qrScanFeedbackTeacher.classList.add('text-red-600');
-                        }
-                        console.log(`Arrival already marked for ${teacher.name} today.`);
-                        await addAuditLog(userEmail, 'Teacher QR Attendance Duplicate Arrival', 'Teacher Attendance', `Duplicate QR scan for ${teacher.name} (ID: ${teacherId}) - Arrival`);
-                    } else {
-                        const { error: updateError } = await supabase.from('teacher_attendance').update({ arrival_time: currentTime, status: 'Present' }).eq('id', existingRecord.id);
-                        if (updateError) throw updateError;
-                        if (qrScanFeedbackTeacher) {
-                            qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Marked`;
-                            qrScanFeedbackTeacher.classList.add('text-green-600');
-                        }
-                        console.log(`Arrival marked for ${teacher.name}.`);
-                        // Speak welcome/goodbye message
-                        const welcomeMessage = type === 'arrival'
-                            ? `Welcome to TPS, ${teacher.name}`
-                            : `Goodbye from TPS, ${teacher.name}`;
-                        window.speechSynthesis.cancel();
-                        const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                        utterance.lang = 'en-US';
-                        utterance.pitch = 1;
-                        utterance.rate = 1;
-                        window.speechSynthesis.speak(utterance);
-
-                        await addAuditLog(userEmail, 'Teacher QR Attendance Arrival', 'Teacher Attendance', `Marked Arrival for ${teacher.name} (ID: ${teacherId}) via QR scan`);
-                    }
-                } else {
-                    // Create new attendance record for arrival
-                    const { error: insertError } = await supabase.from('teacher_attendance').insert([
-                        {
-                            teacher_id: teacherId,
-                            date: today,
-                            status: 'Present',
-                            arrival_time: currentTime,
-                            remarks: 'QR Scan'
-                        }
-                    ]);
-                    if (insertError) throw insertError;
-                    if (qrScanFeedbackTeacher) {
-                        qrScanFeedbackTeacher.textContent = `${teacher.name} (Subject: ${teacher.subject}) - Arrival Marked`;
-                        qrScanFeedbackTeacher.classList.add('text-green-600');
-                    }
-                    console.log(`Arrival marked for ${teacher.name}.`);
-                    // Speak welcome/goodbye message
-                    const welcomeMessage = type === 'arrival'
-                        ? `Welcome to TPS, ${teacher.name}`
-                        : `Goodbye from TPS, ${teacher.name}`;
-                    window.speechSynthesis.cancel();
-                    const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-                    utterance.lang = 'en-US';
-                    utterance.pitch = 1;
-                    utterance.rate = 1;
-                    window.speechSynthesis.speak(utterance);
-
-                    await addAuditLog(userEmail, 'Teacher QR Attendance Marked', 'Teacher Attendance', `Marked Arrival for ${teacher.name} (ID: ${teacherId}) via QR scan`);
-                }
-                await fetchTeacherAttendanceRecords(); // Refresh attendance data
-            } catch (error) {
-                if (qrScanFeedbackTeacher) {
-                    qrScanFeedbackTeacher.textContent = `Error for ${teacher.name}: ${error.message}`;
-                    qrScanFeedbackTeacher.classList.add('text-red-600');
-                }
-                console.error('Supabase error marking teacher attendance via QR:', error);
-                await addAuditLog(userEmail, 'Teacher QR Attendance Failed', 'Teacher Attendance', `Error marking attendance for ${teacher.name} (ID: ${teacherId}): ${error.message}`);
-            }
-        } else {
-            if (qrScanFeedbackTeacher) {
-                qrScanFeedbackTeacher.textContent = `Teacher not found for this QR code: ${teacherId}`;
-                qrScanFeedbackTeacher.classList.add('text-red-600');
-            }
-            console.warn(`Teacher not found for QR code: ${teacherId}`);
-            await addAuditLog('QR Scanner', 'QR Scan Failed', 'Teacher Attendance', `Teacher not found for QR code: ${teacherId}`);
-        }
-    } else {
-        if (qrScanFeedbackTeacher) {
-            qrScanFeedbackTeacher.textContent = `Invalid QR code format: ${decodedText}`;
-            qrScanFeedbackTeacher.classList.add('text-red-600');
-        }
-        console.warn(`Invalid QR code format: ${decodedText}`);
-        await addAuditLog('QR Scanner', 'QR Scan Failed', 'Teacher Attendance', `Invalid QR code format: ${decodedText}`);
-    }
-}
-
-// Function to handle errors during QR scanning for teachers
-function onScanErrorTeacher(errorMessage) {
-    // console.warn(`Teacher QR Code scan error: ${errorMessage}`); // Too verbose for console
-}
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadAllData(); // Load all data on initial load
-    updateDashboardStats(); // Update dashboard stats after data load
-    initCharts(); // Initialize charts after data load
-});
-
-
-/* ========================
-   SAFE PATCH: Face Recognition & Missing Globals (appended by fixer)
-   ======================== */
-(function(){
-  // Avoid re-applying the patch
-  if (window.__FR_PATCH_APPLIED__) return;
-  window.__FR_PATCH_APPLIED__ = true;
-
-  // Supabase client must exist
-  if (typeof supabase === 'undefined') {
-    console.error('Supabase client not found. Ensure Supabase is initialized before this patch.');
-    return;
-  }
-
-  // Missing globals
-  window.teacherFaceRecognitionStream = window.teacherFaceRecognitionStream || null;
-  window.teacherFacePlayHandlerRef = window.teacherFacePlayHandlerRef || null;
-  window.detectionInterval = window.detectionInterval || null;
-
-  // Element getters (safe)
-  const $ = (id) => document.getElementById(id);
-  const videoEl = $('teacherFaceRecognitionVideo');
-  const canvasEl = $('teacherFaceRecognitionCanvas');
-  const feedbackEl = $('teacherFaceRecognitionFeedback');
-
-  // Provide loadFaceApiModels if not defined
-  if (typeof window.loadFaceApiModels !== 'function') {
-    window.loadFaceApiModels = async function loadFaceApiModels() {
-      if (window.__FR_MODELS_LOADED__) return;
-      const modelsPath = '/models'; // change if needed
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(modelsPath),
-        faceapi.nets.faceLandmark68Net.loadFromUri(modelsPath),
-        faceapi.nets.faceRecognitionNet.loadFromUri(modelsPath)
-      ]);
-      window.__FR_MODELS_LOADED__ = true;
-    };
-  }
-
-  // Unified recognizeTeacher using teacher_faces table where descriptor is stored as JSON array
-  async function recognizeTeacher(descriptor) {
-    try {
-      const { data: teacherFaces, error } = await supabase
-        .from('teacher_faces')
-        .select('teacher_id, descriptor');
-
-      if (error) {
-        console.error('Supabase error loading teacher_faces:', error);
-        return null;
-      }
-      if (!Array.isArray(teacherFaces) || teacherFaces.length === 0) return null;
-
-      let bestId = null, bestDist = Infinity;
-      for (const row of teacherFaces) {
-        let stored = row.descriptor;
-        // descriptor might be JSON string or array
-        if (typeof stored === 'string') {
-          try { stored = JSON.parse(stored); } catch {}
-        }
-        const a = new Float32Array(stored);
-        const dist = faceapi.euclideanDistance(a, descriptor);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestId = row.teacher_id;
-        }
-      }
-      return (bestDist < 0.6) ? bestId : null;
-    } catch (e) {
-      console.error('recognizeTeacher failed:', e);
-      return null;
-    }
-  }
-
-  // Robust markTeacherAttendance
-  async function markTeacherAttendance(teacherUuid, method) {
-    const today = new Date().toISOString().split('T')[0];
-    const currentTime = new Date().toTimeString().split(' ')[0];
-    const loggedInUser = (()=>{ try { return JSON.parse(localStorage.getItem('loggedInUser')); } catch(e){ return null; } })();
-    const userEmail = (loggedInUser && loggedInUser.email) ? loggedInUser.email : 'Face Recognition System';
-
-    try {
-      const { data: existing, error: selErr } = await supabase
-        .from('teacher_attendance')
-        .select('*')
-        .eq('teacher_id', teacherUuid)
-        .eq('date', today);
-
-      if (selErr) {
-        console.error('Attendance select error:', selErr);
-        try { await addAuditLog(userEmail, 'Error Fetching Attendance', 'Teacher Attendance', selErr.message || 'error'); } catch {}
-        return;
-      }
-
-      if (Array.isArray(existing) && existing.length > 0) {
-        const rec = existing[0];
-        if (rec.arrival_time) {
-          if (feedbackEl) feedbackEl.textContent = `Arrival already marked for ${teacherUuid}.`;
-          try { await addAuditLog(userEmail, 'Duplicate Arrival', 'Teacher Attendance', `Teacher ${teacherUuid}`); } catch {}
-        } else {
-          const { error: updErr } = await supabase
-            .from('teacher_attendance')
-            .update({ arrival_time: currentTime, status: 'Present' })
-            .eq('id', rec.id);
-          if (updErr) {
-            console.error('Attendance update error:', updErr);
-            if (feedbackEl) feedbackEl.textContent = 'Failed to update attendance.';
-            return;
-          }
-          if (feedbackEl) feedbackEl.textContent = `Arrival marked for ${teacherUuid}.`;
-        }
-      } else {
-        const { error: insErr } = await supabase
-          .from('teacher_attendance')
-          .insert([{ teacher_id: teacherUuid, date: today, status: 'Present', arrival_time: currentTime, remarks: method || 'Face Recognition' }]);
-        if (insErr) {
-          console.error('Attendance insert error:', insErr);
-          if (feedbackEl) feedbackEl.textContent = 'Failed to mark attendance.';
-          return;
-        }
-        if (feedbackEl) feedbackEl.textContent = `Attendance marked for ${teacherUuid}.`;
-      }
-    } catch (e) {
-      console.error('markTeacherAttendance exception:', e);
-      if (feedbackEl) feedbackEl.textContent = `Error: ${e.message}`;
-    }
-  }
-
-  // Unified initFaceRecognition that overrides earlier duplicates
-  async function initFaceRecognition() {
-    if (!videoEl || !canvasEl || !feedbackEl) {
-      console.warn('Face recognition UI elements missing; skipping init.');
-      return;
-    }
-    try {
-      feedbackEl.textContent = 'Loading models...';
-      await window.loadFaceApiModels();
-      if (window.teacherFaceRecognitionStream) {
-        window.teacherFaceRecognitionStream.getTracks().forEach(t => t.stop());
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
-      window.teacherFaceRecognitionStream = stream;
-      videoEl.srcObject = stream;
-      await videoEl.play();
-
-      const displaySize = { width: videoEl.videoWidth || 640, height: videoEl.videoHeight || 480 };
-      canvasEl.width = displaySize.width; canvasEl.height = displaySize.height;
-      faceapi.matchDimensions(canvasEl, displaySize);
-      feedbackEl.textContent = 'Detecting faces...';
-
-      const detect = async () => {
-        if (!window.teacherFaceRecognitionStream) return;
-        try {
-          const detections = await faceapi
-            .detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks()
-            .withFaceDescriptors();
-          const resized = faceapi.resizeResults(detections, displaySize);
-          const ctx = canvasEl.getContext('2d');
-          ctx.clearRect(0,0,canvasEl.width, canvasEl.height);
-          faceapi.draw.drawDetections(canvasEl, resized);
-          faceapi.draw.drawFaceLandmarks(canvasEl, resized);
-
-          if (detections.length > 0) {
-            feedbackEl.textContent = `Face detected (${detections.length}). Recognizing...`;
-            const teacherId = await recognizeTeacher(detections[0].descriptor);
-            if (teacherId) {
-              await markTeacherAttendance(teacherId, 'Face Recognition');
-            } else {
-              feedbackEl.textContent = 'No matching teacher found.';
-            }
-          } else {
-            feedbackEl.textContent = 'No face detected. Look at the camera.';
-          }
-          window.requestAnimationFrame(detect);
-        } catch (err) {
-          console.error('Detection loop error:', err);
-          feedbackEl.textContent = 'Detection error.';
-          window.requestAnimationFrame(detect);
-        }
-      };
-      window.requestAnimationFrame(detect);
-    } catch (err) {
-      console.error('initFaceRecognition error:', err);
-      feedbackEl.textContent = (err && err.message) ? err.message : 'Camera error';
-    }
-  }
-
-  function stopFaceRecognition() {
-    if (window.teacherFaceRecognitionStream) {
-      window.teacherFaceRecognitionStream.getTracks().forEach(t => t.stop());
-      window.teacherFaceRecognitionStream = null;
-    }
-    if (videoEl) videoEl.srcObject = null;
-    if (canvasEl) {
-      const ctx = canvasEl.getContext('2d');
-      ctx && ctx.clearRect(0,0,canvasEl.width, canvasEl.height);
-    }
-    if (feedbackEl) feedbackEl.textContent = 'Stopped';
-  }
-
-  // Expose overrides globally to overshadow duplicates defined earlier
-  window.initFaceRecognition = initFaceRecognition;
-  window.stopFaceRecognition = stopFaceRecognition;
-
-  // Wire buttons if present
-  document.addEventListener('DOMContentLoaded', () => {
-    const startBtn = $('startRecognition');
-    const stopBtn = $('stopRecognition');
-    if (startBtn) startBtn.addEventListener('click', initFaceRecognition);
-    if (stopBtn) stopBtn.addEventListener('click', stopFaceRecognition);
-  });
-})();
